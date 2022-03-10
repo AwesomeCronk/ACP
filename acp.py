@@ -1,18 +1,47 @@
-import argparse, pathlib, logging, sys
-from asyncio.log import logger
+import argparse, json, pathlib, logging, sys
 
+
+### Constants ###
 platform = sys.platform
 
+# File paths
 if platform == 'linux':
-    logPath = pathlib.Path('~/.local/share/ACP/log.txt').expanduser()
-    configPath = pathlib.Path('~/.local/share/ACP/config.json').expanduser()
+    dataDirPath = pathlib.Path('~/.local/share/ACP').expanduser()
+    logPath = dataDirPath.joinpath('log.txt')
+    configPath = dataDirPath.joinpath('config.json')
+elif platform == 'win32':
+    raise RuntimeError('Windows is not yet supported - I hope to change that soon!')
+else:
+    raise RuntimeError('Platform "{}" is not recognized and therefore not supported.'.format(platform))
 
-docsURL='https://raw.githubusercontent.com/AwesomeCronk/ACP/master/docs'
+# URLs
+docsRootURL='https://raw.githubusercontent.com/AwesomeCronk/ACP/master/docs/'   # Base url to fetch documentation
 
+# Miscellaneous
+logLevels = {
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING,
+    'error': logging.ERROR,
+    'critical': logging.CRITICAL
+}
+defaultConfig = {
+    'debug-level': 'info'
+}
 
-def getArgs(null):
+### Utils ###
+def getArgs(argv):
     rootParser = argparse.ArgumentParser(prog='ACP', description='A package manager that aims to eliminate the headaches other package managers incur.')
-    subParsers = rootParser.add_subparsers()
+    subParsers = rootParser.add_subparsers(dest = 'command')
+    subParsers.required = True
+    rootParser.add_argument(
+        '--log-level',
+        '-l',
+        help='importance level cutoff for logging',
+        type = str,
+        default='info',
+        nargs=1
+    )
     
     infoParser = subParsers.add_parser('info', help='Fetch info on a package')
     infoParser.set_defaults(function=info)
@@ -38,32 +67,65 @@ def getArgs(null):
         type=str
     )
 
-    return rootParser.parse_args()
+    return rootParser.parse_args(argv)
 
-def readConfig(key, value):
-    pass
+def readConfig(filePath):
+    with open(filePath, 'r') as configFile:
+        config = json.load(configFile)
+    return config
 
-def writeConfig(key, value):
-    pass
+def writeConfig(filePath, config):
+    with open(filePath, 'w') as configFile:
+        json.dump(config, configFile)
 
 
-def info(args):
+### Commands ###
+def info(args, config):
     logger = logging.getLogger('info')
     print('Package information for {}:'.format(args.package))
 
-def add_repo(args):
+def add_repo(args, config):
     logger = logging.getLogger('add-repo')
     print('This is where I would add a repo to your local list')
 
-def docs(args):
+def docs(args, config):
     logger = logging.getLogger('docs')
     logger.debug('fetching docs for {}...'.format(args.topic))
     print('Listing documentation for {}:'.format(args.topic))
 
 
+### Main program stuffs ###
 def main(argv):
-    args = getArgs(argv)
-    args.function(args)
+    # print(argv)
+    args = getArgs(argv[1:])
+    # print(args)
+
+    # Ensure that the environment is set up ok
+    if not dataDirPath.exists():
+        print('Data directory not found, creating one now.')
+        dataDirPath.mkdir(parents=True, exist_ok=True)
+
+    if not configPath.exists():
+        print('Config file not found, creating one now.')
+        configPath.touch()
+        writeConfig(configPath, defaultConfig)
+
+
+    config = readConfig(configPath)
+
+    # Use current setting
+    if args.log_level == ['config']:
+        logLevel = logLevels[config['log-level']]
+    # Override current setting
+    else:
+        if args.log_level in logLevels.keys():
+            logLevel = logLevels[args.log_level]
+        else:
+            raise ValueError('Invalid log level "{}"'.format(args.log_level))
+        
+    logging.basicConfig(filename=logPath, filemode='w', level=logLevel)
+    
+    args.function(args, config)
 
 
 if __name__ == '__main__':
