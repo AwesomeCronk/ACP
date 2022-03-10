@@ -5,4 +5,4 @@ AwesomeCronk's Packager (ACP) is a package manager meant to combat what I see as
 More info soon!
 
 ### Installing packages:
-Different package types will determine where they should be installed and how. You can create package types and 
+Different package types will determine where they should be installed and how. You can create package types and assign installation locations for them.
