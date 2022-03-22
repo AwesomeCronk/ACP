@@ -1,18 +1,17 @@
-import argparse, json, pathlib, logging, sys
+import argparse, json, pathlib, logging, os, shlex, shutil, subprocess, sys
 
 
 ### Constants ###
-platform = sys.platform
-
 # File paths
-if platform == 'linux':
+if sys.platform == 'linux':
     dataDirPath = pathlib.Path('~/.local/share/ACP').expanduser()
     logPath = dataDirPath.joinpath('log.txt')
     configPath = dataDirPath.joinpath('config.json')
-elif platform == 'win32':
+    repositoriesPath = dataDirPath.joinpath('repositories')
+elif sys.platform == 'win32':
     raise RuntimeError('Windows is not yet supported - I hope to change that soon!')
 else:
-    raise RuntimeError('Platform "{}" is not recognized and therefore not supported.'.format(platform))
+    raise RuntimeError('Platform "{}" is not recognized and therefore not supported.'.format(sys.platform))
 
 # URLs
 docsRootURL='https://raw.githubusercontent.com/AwesomeCronk/ACP/master/docs/'   # Base url to fetch documentation
@@ -28,11 +27,12 @@ logLevels = {
 defaultConfig = {
     'debug-level': 'info'
 }
+supportedPlatforms = ['linux']
 
 ### Utils ###
 def getArgs(argv):
-    rootParser = argparse.ArgumentParser(prog='ACP', description='A package manager that aims to eliminate the headaches other package managers incur.')
-    subParsers = rootParser.add_subparsers(dest = 'command')
+    rootParser = argparse.ArgumentParser(prog='ACP', description='A package manager that aims to eliminate the headaches other package managers are prone to.')
+    subParsers = rootParser.add_subparsers(dest='command')
     subParsers.required = True
     rootParser.add_argument(
         '--log-level',
@@ -51,7 +51,7 @@ def getArgs(argv):
         type=str
     )
 
-    add_repoParser = subParsers.add_parser('repo', help='Manage package repositories')
+    add_repoParser = subParsers.add_parser('add-repo', help='Manage package repositories')
     add_repoParser.set_defaults(function=add_repo)
     add_repoParser.add_argument(
         'repository',
@@ -67,6 +67,9 @@ def getArgs(argv):
         type=str
     )
 
+    platformsParser = subParsers.add_parser('platforms', help='Get supported platforms')
+    platformsParser.set_defaults(function=platforms)
+
     return rootParser.parse_args(argv)
 
 def readConfig(filePath):
@@ -78,6 +81,18 @@ def writeConfig(filePath, config):
     with open(filePath, 'w') as configFile:
         json.dump(config, configFile)
 
+def checkDependency(name, logger):
+    result = shutil.which(name)
+    if result is None:
+        logger.error('dependency "{}" not found'.format(name))
+        raise RuntimeError('This operation requires that "{}" is installed and available on PATH.'.format(name))
+    else:
+        return result
+
+def git(path, command):  #Wrapper for subprocess to facilitate one-line git commands.
+    git = subprocess.Popen([path, *shlex.split(command)], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    return git.communicate()
+
 
 ### Commands ###
 def info(args, config):
@@ -86,12 +101,24 @@ def info(args, config):
 
 def add_repo(args, config):
     logger = logging.getLogger('add-repo')
-    print('This is where I would add a repo to your local list')
+    pathToGit = checkDependency('git', logger)
+    os.chdir(repositoriesPath)
+    gitOutput = git(pathToGit, 'clone {}'.format(args.repository))
+    print(gitOutput)
+
+    # git clone new repository
+    # confirm that it meets requirements
+    # remove it if not
 
 def docs(args, config):
     logger = logging.getLogger('docs')
     logger.debug('fetching docs for {}...'.format(args.topic))
     print('Listing documentation for {}:'.format(args.topic))
+
+def platforms(args, config):
+    print('The following platforms are currently supported:')
+    for platform in supportedPlatforms:
+        print(platform)
 
 
 ### Main program stuffs ###
@@ -109,6 +136,10 @@ def main(argv):
         print('Config file not found, creating one now.')
         configPath.touch()
         writeConfig(configPath, defaultConfig)
+
+    if not repositoriesPath.exists():
+        print('Repository directory not found, creating one now.')
+        repositoriesPath.mkdir(parents=True, exist_ok=True)
 
 
     config = readConfig(configPath)
