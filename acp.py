@@ -1,20 +1,40 @@
-import argparse, json, pathlib, logging, os, shlex, shutil, subprocess, sys
+import argparse, json, logging, os, pathlib, re, requests, shlex, shutil, subprocess, sys
+from datetime import datetime
 
 
 ### Constants ###
-# File paths
+# Platform
 if sys.platform == 'linux':
+    if pathlib.Path('/sbin/init').resolve() == pathlib.Path('/usr/lib/systemd/systemd'):
+        platform = 'Linux-Systemd'
+    else:
+        platform = 'Linux-Unknown'
+elif sys.platform == 'win32':
+    platform = 'Windows'
+elif sys.platform == 'darwin':
+    platform = 'MacOS'
+else:
+    platform = 'Unknown'
+
+supportedPlatforms = ('Linux-Systemd',)
+
+# File paths
+if platform == 'Linux-Systemd':
     dataDirPath = pathlib.Path('~/.local/share/ACP').expanduser()
     logPath = dataDirPath.joinpath('log.txt')
     configPath = dataDirPath.joinpath('config.json')
     repositoriesPath = dataDirPath.joinpath('repositories')
-elif sys.platform == 'win32':
+elif platform == 'Windows':
     raise RuntimeError('Windows is not yet supported - I hope to change that soon!')
 else:
-    raise RuntimeError('Platform "{}" is not recognized and therefore not supported.'.format(sys.platform))
+    raise RuntimeError('Platform "{}" is not recognized and therefore not supported.'.format(platform))
 
 # URLs
 docsRootURL='https://raw.githubusercontent.com/AwesomeCronk/ACP/master/docs/'   # Base url to fetch documentation
+
+# Errors
+class ConfigError(Exception):
+    pass
 
 # Miscellaneous
 logLevels = {
@@ -27,27 +47,28 @@ logLevels = {
 defaultConfig = {
     'debug-level': 'info'
 }
-supportedPlatforms = ['linux']
+
 
 ### Utils ###
 def getArgs(argv):
     rootParser = argparse.ArgumentParser(prog='ACP', description='A package manager that aims to eliminate the headaches other package managers are prone to.')
-    subParsers = rootParser.add_subparsers(dest='command')
-    subParsers.required = True
     rootParser.add_argument(
         '--log-level',
         '-l',
         help='importance level cutoff for logging',
         type = str,
-        default='info',
+        default=['config'],
         nargs=1
     )
+
+    subParsers = rootParser.add_subparsers(dest='command')
+    subParsers.required = True
     
     infoParser = subParsers.add_parser('info', help='Fetch info on a package')
     infoParser.set_defaults(function=info)
     infoParser.add_argument(
         'package',
-        help='package to operate on',
+        help='package for which to fetch info',
         type=str
     )
 
@@ -65,6 +86,27 @@ def getArgs(argv):
         'topic',
         help='topic to search for',
         type=str
+    )
+
+    installParser = subParsers.add_parser('install', help='Install a package')
+    installParser.set_defaults(function=install)
+    installParser.add_argument(
+        'package',
+        help='package to install',
+        type=str
+    )
+    installParser.add_argument(
+        '-v',
+        '--version',
+        help='desired version',
+        type=str,
+        default=['latest-stable']
+    )
+    installParser.add_argument(
+        '-l',
+        '--location',
+        help='location in which to install the package',
+        type=pathlib.Path
     )
 
     platformsParser = subParsers.add_parser('platforms', help='Get supported platforms')
@@ -88,6 +130,46 @@ def checkDependency(name, logger):
         raise RuntimeError('This operation requires that "{}" is installed and available on PATH.'.format(name))
     else:
         return result
+
+def getURLType(url: str):
+    # urlTypes = ('name', 'repo/name', 'web', 'file')
+    if url[0] in ('.', '/'):    # Going to need changed for Windows support
+        return 'file'
+    elif url[0:7] == 'http://' or url[0:8] == 'https://':
+        return 'web'
+    elif url.count('/') == 0:
+        return 'name'
+    elif url.count('/') == 1:
+        return 'repo/name'
+    else:
+        return 'unknown'
+
+def versionIsValid(version):
+    splitVersion = version.split('.')
+    valid = True
+    for token in splitVersion:
+        if not re.match('^(\d*|dev|stable|pre)$', token):
+            valid = False
+            break
+    return valid
+
+# Stability hierarchy: stable > pre > dev (if none of those are included, assume stable)
+
+def getLatestVersion(versions, requireStable=False):
+    latest = []
+    latestStable = []
+    for version in versions:
+        versionSplit = version.split('.')
+
+        # Longer versions are considered more authoritative; match lengths before comparing contents
+        if len(versionSplit) > len(latest):
+            if versionSplit in ('stable', 'pre', 'dev'):
+                latest.append(versionSplit[-1])     # Go ahead and add what's there because it wasn't there
+            else:
+                latest.append(int(versionSplit[-1]))
+
+        for i in range(len(versionSplit)):
+            if versionSplit
 
 def git(path, command):  #Wrapper for subprocess to facilitate one-line git commands.
     git = subprocess.Popen([path, *shlex.split(command)], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
@@ -117,8 +199,56 @@ def docs(args, config):
 
 def platforms(args, config):
     print('The following platforms are currently supported:')
-    for platform in supportedPlatforms:
-        print(platform)
+    print('\n'.join([platform for platform in supportedPlatforms]))
+
+def install(args, config):
+    logger = logging.getLogger('install')
+    logger.info('Attempting to install {} version {}'.format(args.package, args.version[0]))
+    urlType = getURLType(args.package)
+    logger.debug('URL type: {}'.format(urlType))
+
+    if urlType == 'name':
+        # Search available repositories for package, then fetch package data
+        packageData = ''
+
+    elif urlType == 'repo/name':
+        # Check specified repo for package, then fetch package data
+        packageData = ''
+
+    elif urlType == 'web':  # HUGE security hazard, may drop in the future
+        # Request specified URL to fetch package data
+        response = requests.get(args.package)
+        
+        # May remove this later
+        if args.package[-4:] != '.acp':
+            raise RuntimeError('Package URL does not have .acp extension.')
+
+        packageData = response.content.decode()
+
+    elif urlType == 'file':
+        # Read file to fetch package data
+        with open(pathlib.Path(args.package).resolve(), 'r') as file:
+            packageData = file.read()
+
+    # Take the package data and parse it
+    packageData = json.loads(packageData)
+
+    if versionIsValid(args.version[0]):
+        if args.version[0] == 'latest-stable':
+            versionToInstall = getLatestVersion(packageData['versions'].keys(), requireStable=True)
+        elif args.version[0] == 'latest':
+            versionToInstall = getLatestVersion(packageData['versions'].keys())
+        elif args.version[0] in packageData['versions'].keys():
+            versionToInstall = args.version[0]
+        else:
+            raise RuntimeError('Version "{}" not available'.format(args.version[0]))
+
+        logger.info('Installing package {} version {}'.format(packageData['name'], args.version[0]))
+        print('Name: {}\nType: {}\nAvailable versions: {}'.format(packageData['name'], packageData['type'], ', '.join([v for v in packageData['versions'].keys()])))
+    else:
+        raise ValueError('Invalid version: "{}"'.format(args.version[0]))
+
+    print('Installed {}'.format(args.package))
 
 
 ### Main program stuffs ###
@@ -146,15 +276,19 @@ def main(argv):
 
     # Use current setting
     if args.log_level == ['config']:
-        logLevel = logLevels[config['log-level']]
+        if config['log-level'] in logLevels.keys():
+            logLevel = logLevels[config['log-level']]
+        else:
+            raise ValueError('Invalid log level "{}" from configuration'.format(config['log-level']))
     # Override current setting
     else:
-        if args.log_level in logLevels.keys():
-            logLevel = logLevels[args.log_level]
+        if args.log_level[0] in logLevels.keys():
+            logLevel = logLevels[args.log_level[0]]
         else:
-            raise ValueError('Invalid log level "{}"'.format(args.log_level))
+            raise ValueError('Invalid log level "{}"'.format(args.log_level[0]))
         
-    logging.basicConfig(filename=logPath, filemode='w', level=logLevel)
+    logging.basicConfig(filename=logPath, filemode='a', level=logLevel)
+    logging.info('=========={}=========='.format(datetime.now().strftime('%Y-%m-%d %H:%M')))
     
     args.function(args, config)
 

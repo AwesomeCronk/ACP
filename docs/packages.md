@@ -1,5 +1,5 @@
 # Packages
-A package file is a [JSON](https://en.wikipedia.org/wiki/JSON) file containing information on the package such as available versions, where to find the files for them, etc.
+A package file is a [JSON](https://en.wikipedia.org/wiki/JSON) file containing information on the package such as available versions, where to find the files for them, etc.The filename extension should be `.acp`.
 
 ## JSON Structure
 This is an example structure showing necessary entries in package files.
