@@ -186,7 +186,31 @@ def install(args, config):
 
     elif urlType == 'repo/name':
         # Check specified repo for package, then fetch package data
-        packageData = ''
+        repo, name = args.package.split('/')
+
+        foundRepository = False
+        for repositoryPath in repositoriesPath.glob('*'):
+            if repo == repositoryPath.name:
+                foundRepository = True
+                break
+
+        if foundRepository:
+            foundPackage = False
+            with open(repositoryPath.joinpath('packages'), 'r') as packageListing:
+                for packageEntry in packageListing.readlines():
+                    packageName, packagePath = packageEntry.strip().split(': ')
+                    if name == packageName:
+                        foundPackage = True
+
+            if foundPackage:
+                with open(repositoryPath.joinpath(packagePath), 'r') as packageFile:
+                    packageData = packageFile.read()
+
+            else:
+                raise RuntimeError('Repository "{}" has no entry for package "{}"'.format(repo, name))
+
+        else:
+            raise RuntimeError('Could not find repository "{}".'.format(repo))
 
     elif urlType == 'web':  # HUGE security hazard, may drop in the future
         # Request specified URL to fetch package data
