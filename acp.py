@@ -100,7 +100,7 @@ def getArgs(argv):
         '--version',
         help='desired version',
         type=str,
-        default=['latest-stable']
+        default='latest-stable'
     )
     installParser.add_argument(
         '-l',
@@ -144,33 +144,6 @@ def getURLType(url: str):
     else:
         return 'unknown'
 
-def versionIsValid(version):
-    splitVersion = version.split('.')
-    valid = True
-    for token in splitVersion:
-        if not re.match('^(\d*|dev|stable|pre)$', token):
-            valid = False
-            break
-    return valid
-
-# Stability hierarchy: stable > pre > dev (if none of those are included, assume stable)
-
-def getLatestVersion(versions, requireStable=False):
-    latest = []
-    latestStable = []
-    for version in versions:
-        versionSplit = version.split('.')
-
-        # Longer versions are considered more authoritative; match lengths before comparing contents
-        if len(versionSplit) > len(latest):
-            if versionSplit in ('stable', 'pre', 'dev'):
-                latest.append(versionSplit[-1])     # Go ahead and add what's there because it wasn't there
-            else:
-                latest.append(int(versionSplit[-1]))
-
-        for i in range(len(versionSplit)):
-            if versionSplit
-
 def git(path, command):  #Wrapper for subprocess to facilitate one-line git commands.
     git = subprocess.Popen([path, *shlex.split(command)], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     return git.communicate()
@@ -203,7 +176,7 @@ def platforms(args, config):
 
 def install(args, config):
     logger = logging.getLogger('install')
-    logger.info('Attempting to install {} version {}'.format(args.package, args.version[0]))
+    logger.info('Attempting to install "{}" version "{}"'.format(args.package, args.version))
     urlType = getURLType(args.package)
     logger.debug('URL type: {}'.format(urlType))
 
@@ -233,21 +206,27 @@ def install(args, config):
     # Take the package data and parse it
     packageData = json.loads(packageData)
 
-    if versionIsValid(args.version[0]):
-        if args.version[0] == 'latest-stable':
-            versionToInstall = getLatestVersion(packageData['versions'].keys(), requireStable=True)
-        elif args.version[0] == 'latest':
-            versionToInstall = getLatestVersion(packageData['versions'].keys())
-        elif args.version[0] in packageData['versions'].keys():
-            versionToInstall = args.version[0]
+    if args.version == 'latest-stable':
+        if 'latest-stable' in packageData.keys() and packageData['latest-stable'] != '<none>':
+            versionToInstall = packageData['latest-stable']
         else:
-            raise RuntimeError('Version "{}" not available'.format(args.version[0]))
+            raise RuntimeError('No latest-stable version defined in this package.')
 
-        logger.info('Installing package {} version {}'.format(packageData['name'], args.version[0]))
-        print('Name: {}\nType: {}\nAvailable versions: {}'.format(packageData['name'], packageData['type'], ', '.join([v for v in packageData['versions'].keys()])))
+    elif args.version == 'latest':
+        if 'latest' in packageData.keys() and packageData['latest'] != '<none>':
+            versionToInstall = packageData['latest']
+        else:
+            raise RuntimeError('No latest version defined in this package.')
+
+    elif args.version in packageData['versions']:
+        versionToInstall = args.version
+
     else:
-        raise ValueError('Invalid version: "{}"'.format(args.version[0]))
+        raise RuntimeError('Package "{}" has no version "{}".'.format(args.package, args.version))
 
+    logger.info('Installing package "{}" version "{}"'.format(packageData['name'], versionToInstall))
+    print('Name: {}\nType: {}\nAvailable versions: {}'.format(packageData['name'], packageData['type'], ', '.join([v for v in packageData['versions'].keys()])))
+    
     print('Installed {}'.format(args.package))
 
 

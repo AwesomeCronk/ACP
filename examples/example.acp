@@ -1,11 +1,14 @@
 {
     "name": "example-program",
     "type": "program",
+    "latest": "0.0.1.dev",
+    "latest-stable": "<none>",
     "versions":
     {
         "0.0.1.dev":
         {
             "release-notes": "Initial dev release",
+            "stable": "yes",
             "platforms":
             {
                 "Linux-Systemd":
