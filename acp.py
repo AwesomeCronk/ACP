@@ -72,11 +72,21 @@ def getArgs(argv):
         type=str
     )
 
-    add_repoParser = subParsers.add_parser('add-repo', help='Manage package repositories')
+    add_repoParser = subParsers.add_parser('add-repo', help='Add package repositories')
     add_repoParser.set_defaults(function=add_repo)
     add_repoParser.add_argument(
         'repository',
         help='repository to add',
+        type=str
+    )
+
+    update_reposParser = subParsers.add_parser('update-repos', help='Update installed package repositories')
+    update_reposParser.set_defaults(function=update_repos)
+    update_reposParser.add_argument(
+        '-r',
+        '--repository',
+        help='repository to update',
+        default='<all>',
         type=str
     )
 
@@ -144,9 +154,32 @@ def getURLType(url: str):
     else:
         return 'unknown'
 
-def git(path, command):  #Wrapper for subprocess to facilitate one-line git commands.
+def getPackageTypes():
+    packageTypedefs = {
+        'package-typedef':
+        {
+            'global':
+            {
+                'install-path': pathlib.Path('<none>'),
+                'link-path': pathlib.Path('<none>')
+            },
+            'local':
+            {
+                'install-path': dataDirPath.joinpath('_packageTypes'),
+                'link-path': pathlib.Path('<none>')
+            }
+        }
+    }
+
+    print(packageTypedefs['package-typedef']['local']['install-path'])
+    print(packageTypedefs['package-typedef']['local']['install-path'].glob('*'))
+    packageTypedefPaths = packageTypedefs['package-typedef']['local']['install-path'].glob('*')
+    for packageTypedefPath in packageTypedefPaths:
+        print(packageTypedefPath)
+
+def git(path, command):  # Wrapper for subprocess to facilitate one-line git commands.
     git = subprocess.Popen([path, *shlex.split(command)], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-    return git.communicate()
+    return ''.join([line.decode() for line in git.communicate()]).encode()
 
 
 ### Commands ###
@@ -159,11 +192,20 @@ def add_repo(args, config):
     pathToGit = checkDependency('git', logger)
     os.chdir(repositoriesPath)
     gitOutput = git(pathToGit, 'clone {}'.format(args.repository))
-    print(gitOutput)
+    print(gitOutput.decode())
 
     # git clone new repository
     # confirm that it meets requirements
     # remove it if not
+
+def update_repos(args, config):
+    logger = logging.getLogger('update-repo')
+    pathToGit = checkDependency('git', logger)
+    if args.repository == '<all>':
+        raise NotImplementedError('Well you can\'t update all of them at once yet ¯\_(ツ)_/¯')
+    os.chdir(repositoriesPath.joinpath(args.repository))
+    gitOutput = git(pathToGit, 'pull origin master')
+    print(gitOutput.decode())
 
 def docs(args, config):
     logger = logging.getLogger('docs')
@@ -180,6 +222,7 @@ def install(args, config):
     urlType = getURLType(args.package)
     logger.debug('URL type: {}'.format(urlType))
 
+    # Fetch package data
     if urlType == 'name':
         # Search available repositories for package, then fetch package data
         packageData = ''
@@ -196,7 +239,7 @@ def install(args, config):
 
         if foundRepository:
             foundPackage = False
-            with open(repositoryPath.joinpath('packages'), 'r') as packageListing:
+            with open(repositoryPath.joinpath('_packages'), 'r') as packageListing:
                 for packageEntry in packageListing.readlines():
                     packageName, packagePath = packageEntry.strip().split(': ')
                     if name == packageName:
@@ -227,7 +270,7 @@ def install(args, config):
         with open(pathlib.Path(args.package).resolve(), 'r') as file:
             packageData = file.read()
 
-    # Take the package data and parse it
+    # Parse package data
     packageData = json.loads(packageData)
 
     if args.version == 'latest-stable':
@@ -248,9 +291,26 @@ def install(args, config):
     else:
         raise RuntimeError('Package "{}" has no version "{}".'.format(args.package, args.version))
 
+    if not platform in packageData['versions'][versionToInstall]['platforms'].keys():
+        raise RuntimeError('Version "{}" has no platform definition for "{}"'.format(versionToInstall, platform))
+
+    # Install package
     logger.info('Installing package "{}" version "{}"'.format(packageData['name'], versionToInstall))
     print('Name: {}\nType: {}\nAvailable versions: {}'.format(packageData['name'], packageData['type'], ', '.join([v for v in packageData['versions'].keys()])))
+
+    filesData = packageData['versions'][versionToInstall]['platforms'][platform]['files']
+    linksData = packageData['versions'][versionToInstall]['platforms'][platform]['links']
+
+    print('Files:')
+    for fileData in filesData:
+        print(fileData['path'])
     
+    print('Links:')
+    for linkData in linksData:
+        print(linkData['path'])
+    
+    getPackageTypes()
+
     print('Installed {}'.format(args.package))
 
 
