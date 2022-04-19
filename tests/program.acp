@@ -1,0 +1,36 @@
+{
+    "name": "program",
+    "type": "package-typedef",
+    "versions":
+    {
+        "global":
+        {
+            "platforms":
+            {
+                "Linux-Systemd":
+                {
+                    "files":
+                    [
+                        {"path": "/usr/local/bin/ACP/program/packages", "source": "packages"},
+                        {"path": "/usr/local/bin/ACP/program/links", "source": "links"}
+                    ]
+                }
+            }
+        },
+        "local":
+        {
+            "platforms":
+            {
+                "Linux-Systemd":
+                {
+                    "files":
+                    [
+                        {"path": "~/.local/bin/ACP/program/packages", "source": "packages"},
+                        {"path": "~/.local/bin/ACP/program/links", "source": "links"}
+                    ]
+                }
+            }
+        }
+    }
+    
+}

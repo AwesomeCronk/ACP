@@ -166,7 +166,7 @@ def getPackageTypes():
             'local':
             {
                 'install-path': dataDirPath.joinpath('_packageTypes'),
-                'link-path': pathlib.Path('<none>')
+                'link-path': pathlib.Path('_packageTypes/links')
             }
         }
     }
@@ -176,6 +176,52 @@ def getPackageTypes():
     packageTypedefPaths = packageTypedefs['package-typedef']['local']['install-path'].glob('*')
     for packageTypedefPath in packageTypedefPaths:
         print(packageTypedefPath)
+        with open(packageTypedefPath, 'r') as packageTypedefFile:
+            packageTypedef = json.load(packageTypedefFile)
+            
+            # I have finally come to understand that programming is 94% error checking user input and 5% actual logic implementation.
+            # I do not know where the other 1% went.
+            if packageTypedef['name'] == 'package-typedef':
+                print('Not loading "{}" ({}), refuse to override core "package-typedef".'.format(packageTypedef['name'], packageTypedefPath))
+                continue
+            if packageTypedef['type'] != 'package-typedef':
+                print('Not loading "{}" ({}), not of type "package-typedef".'.format(packageTypedef['name'], packageTypedefPath))
+                continue
+            if list(packageTypedef['versions'].keys()) != ['global', 'local']:
+                print('Not loading "{}" ({}), lacks global and/or local definitions.'.format(packageTypedef['name'], packageTypedefPath))
+                continue
+            if (not platform in packageTypedef['global']['platforms'].keys()) or (not platform in packageTypedef['local']['platforms'].keys()):
+                print('Not loading "{}" ({}), Lacks definition for {}.'.format(packageTypedef['name'], packageTypedefPath, platform))
+                continue
+
+            files = packageTypedef['global']['platforms'][platform]['files']
+            for file in files:
+                if file['source'] == 'packages':
+                    globalPackages = file['path']
+                if file['source'] == 'links':
+                    globalLinks = file['path']
+            files = packageTypedef['local']['platforms'][platform]['files']
+            for file in files:
+                if file['source'] == 'packages':
+                    localPackages = file['path']
+                if file['source'] == 'links':
+                    localLinks = file['path']
+
+            packageTypedefs[packageTypedef['name']] = {
+                'global':
+                {
+                    'install-path': globalPackages,
+                    'link-path': globalLinks
+                },
+                'local':
+                {
+                    'install-path': localPackages,
+                    'link-path': localLinks
+                }
+            }
+            print('Loaded package typedef "{}".'.format(packageTypedef['name']))
+
+    return packageTypedefs
 
 def git(path, command):  # Wrapper for subprocess to facilitate one-line git commands.
     git = subprocess.Popen([path, *shlex.split(command)], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
