@@ -27,14 +27,13 @@ if platform == 'Linux-Systemd':
 elif platform == 'Windows':
     raise RuntimeError('Windows is not yet supported - I hope to change that soon!')
 else:
-    raise RuntimeError('Platform "{}" is not recognized and therefore not supported.'.format(platform))
+    raise RuntimeError('Platform "{}" is unrecognized and unsupported.'.format(platform))
 
 # URLs
 docsRootURL='https://raw.githubusercontent.com/AwesomeCronk/ACP/master/docs/'   # Base url to fetch documentation
 
 # Errors
-class ConfigError(Exception):
-    pass
+class ConfigError(Exception): pass
 
 # Miscellaneous
 logLevels = {
@@ -133,7 +132,7 @@ def writeConfig(filePath, config):
     with open(filePath, 'w') as configFile:
         json.dump(config, configFile)
 
-def checkDependency(name, logger):
+def getDependency(name, logger):
     result = shutil.which(name)
     if result is None:
         logger.error('dependency "{}" not found'.format(name))
@@ -166,7 +165,7 @@ def getPackageTypes():
             'local':
             {
                 'install-path': dataDirPath.joinpath('_packageTypes'),
-                'link-path': pathlib.Path('_packageTypes/links')
+                'link-path': dataDirPath.join('_packageTypes/links')    # Shouldn't ever be used, but this way if it is by accident nothing gets broken
             }
         }
     }
@@ -235,9 +234,9 @@ def info(args, config):
 
 def add_repo(args, config):
     logger = logging.getLogger('add-repo')
-    pathToGit = checkDependency('git', logger)
+    pathToGit = getDependency('git', logger)
     os.chdir(repositoriesPath)
-    gitOutput = git(pathToGit, 'clone {}'.format(args.repository))
+    gitOutput = git(pathToGit, 'clone {}'.format(args.repository))  # git clone <args.repository>
     print(gitOutput.decode())
 
     # git clone new repository
@@ -246,9 +245,9 @@ def add_repo(args, config):
 
 def update_repos(args, config):
     logger = logging.getLogger('update-repo')
-    pathToGit = checkDependency('git', logger)
+    pathToGit = getDependency('git', logger)
     if args.repository == '<all>':
-        raise NotImplementedError('Well you can\'t update all of them at once yet ¯\_(ツ)_/¯')
+        raise NotImplementedError('Well you can\'t update all of them at once *yet* ¯\_(ツ)_/¯')
     os.chdir(repositoriesPath.joinpath(args.repository))
     gitOutput = git(pathToGit, 'pull origin master')
     print(gitOutput.decode())
@@ -295,19 +294,16 @@ def install(args, config):
                 with open(repositoryPath.joinpath(packagePath), 'r') as packageFile:
                     packageData = packageFile.read()
 
-            else:
-                raise RuntimeError('Repository "{}" has no entry for package "{}"'.format(repo, name))
+            else: raise RuntimeError('Repository "{}" has no entry for package "{}"'.format(repo, name))
 
-        else:
-            raise RuntimeError('Could not find repository "{}".'.format(repo))
+        else: raise RuntimeError('Could not find repository "{}".'.format(repo))
 
     elif urlType == 'web':  # HUGE security hazard, may drop in the future
         # Request specified URL to fetch package data
         response = requests.get(args.package)
         
         # May remove this later
-        if args.package[-4:] != '.acp':
-            raise RuntimeError('Package URL does not have .acp extension.')
+        if args.package[-4:] != '.acp': raise RuntimeError('Package URL does not have .acp extension.')
 
         packageData = response.content.decode()
 
@@ -319,43 +315,47 @@ def install(args, config):
     # Parse package data
     packageData = json.loads(packageData)
 
-    if args.version == 'latest-stable':
-        if 'latest-stable' in packageData.keys() and packageData['latest-stable'] != '<none>':
-            versionToInstall = packageData['latest-stable']
-        else:
-            raise RuntimeError('No latest-stable version defined in this package.')
+    packageTypedefs = getPackageTypes()
 
-    elif args.version == 'latest':
-        if 'latest' in packageData.keys() and packageData['latest'] != '<none>':
-            versionToInstall = packageData['latest']
-        else:
-            raise RuntimeError('No latest version defined in this package.')
-
-    elif args.version in packageData['versions']:
-        versionToInstall = args.version
+    if packageData['type'] == 'package-typedef':
+        if platform in packageData['versions']['global']['platforms'].keys():
+            pass
+            # Get file and link locations for defined package type and create them
+            # Get install location for package-typedefs from packageTypedefs['package-typedef'] and copy package file there
 
     else:
-        raise RuntimeError('Package "{}" has no version "{}".'.format(args.package, args.version))
+        if args.version == 'latest-stable':
+            if 'latest-stable' in packageData.keys() and packageData['latest-stable'] != '<none>':
+                versionToInstall = packageData['latest-stable']
+            else: raise RuntimeError('No latest-stable version defined in this package.')
 
-    if not platform in packageData['versions'][versionToInstall]['platforms'].keys():
-        raise RuntimeError('Version "{}" has no platform definition for "{}"'.format(versionToInstall, platform))
+        elif args.version == 'latest':
+            if 'latest' in packageData.keys() and packageData['latest'] != '<none>':
+                versionToInstall = packageData['latest']
+            else: raise RuntimeError('No latest version defined in this package.')
 
-    # Install package
-    logger.info('Installing package "{}" version "{}"'.format(packageData['name'], versionToInstall))
-    print('Name: {}\nType: {}\nAvailable versions: {}'.format(packageData['name'], packageData['type'], ', '.join([v for v in packageData['versions'].keys()])))
+        elif args.version in packageData['versions']:
+            versionToInstall = args.version
 
-    filesData = packageData['versions'][versionToInstall]['platforms'][platform]['files']
-    linksData = packageData['versions'][versionToInstall]['platforms'][platform]['links']
+        else: raise RuntimeError('Package "{}" has no version "{}".'.format(args.package, args.version))
 
-    print('Files:')
-    for fileData in filesData:
-        print(fileData['path'])
-    
-    print('Links:')
-    for linkData in linksData:
-        print(linkData['path'])
-    
-    getPackageTypes()
+        if not platform in packageData['versions'][versionToInstall]['platforms'].keys():
+            raise RuntimeError('Version "{}" has no platform definition for "{}"'.format(versionToInstall, platform))
+
+        # Install package
+        logger.info('Installing package "{}" version "{}"'.format(packageData['name'], versionToInstall))
+        print('Name: {}\nType: {}\nAvailable versions: {}'.format(packageData['name'], packageData['type'], ', '.join([v for v in packageData['versions'].keys()])))
+
+        filesData = packageData['versions'][versionToInstall]['platforms'][platform]['files']
+        linksData = packageData['versions'][versionToInstall]['platforms'][platform]['links']
+
+        print('Files:')
+        for fileData in filesData:
+            print('-', fileData['path'])
+        
+        print('Links:')
+        for linkData in linksData:
+            print('-', linkData['name'])
 
     print('Installed {}'.format(args.package))
 

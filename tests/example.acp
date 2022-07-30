@@ -18,6 +18,10 @@
                         {"path": "example", "source": "https://example.com/example-program/example", "action": "write"},
                         {"path": "LICENSE", "source": "https://example.com/example-program/LICENSE", "action": "write"},
                         {"path": "README.md", "source": "https://example.com/example-program/README.md", "action": "write"}
+                    ],
+                    "links":
+                    [
+                        {"name": "example", "target": "example"}
                     ]
                 }
             }
