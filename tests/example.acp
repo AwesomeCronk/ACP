@@ -1,28 +1,45 @@
 {
-    "name": "example-program",
-    "type": "program",
-    "latest": "0.0.1.dev",
-    "latest-stable": "<none>",
-    "versions":
+    name: 'example_program',
+    type: 'program',
+    latest: '0.0.1.dev',
+    latest_stable: null,
+    releases:
     {
-        "0.0.1.dev":
+        '0.0.1.dev':
         {
-            "release-notes": "Initial dev release",
-            "stable": "no",
-            "platforms":
+            release_notes: 'Initial dev release',
+            stable: false,
+            platforms:
             {
-                "Linux-Systemd":
+                x86_64:
                 {
-                    "files":
-                    [
-                        {"path": "example", "source": "https://example.com/example-program/example", "action": "write"},
-                        {"path": "LICENSE", "source": "https://example.com/example-program/LICENSE", "action": "write"},
-                        {"path": "README.md", "source": "https://example.com/example-program/README.md", "action": "write"}
-                    ],
-                    "links":
-                    [
-                        {"name": "example", "target": "example"}
-                    ]
+                    Linux:
+                    {
+                        files:
+                        [
+                            {path: 'example', source: 'https://example.com/example-program/linux-release/example', action: 'write'},
+                            {path: 'LICENSE', source: 'https://example.com/example-program/LICENSE', action: 'write'},
+                            {path: 'README.md', source: 'https://example.com/example-program/README.md', action: 'write'}
+                        ],
+                        links:
+                        [
+                            {name: 'example', target: 'example'}
+                        ]
+                    },
+
+                    Windows:
+                    {
+                        files:
+                        [
+                            {path: 'example.exe', source: 'https://example.com/example-program/windows-release/example.exe', action: 'write'},
+                            {path: 'LICENSE', source: 'https://example.com/example-program/LICENSE', action: 'write'},
+                            {path: 'README.md', source: 'https://example.com/example-program/README.md', action: 'write'}
+                        ],
+                        links:
+                        [
+                            {name: 'example', target: 'example.exe'}
+                        ]
+                    }
                 }
             }
         }
