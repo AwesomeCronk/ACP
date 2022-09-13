@@ -9,7 +9,27 @@ def info(args, config):
     log.setLevel(logging.DEBUG)
     log.addHandler(logStreamHandler)
     log.addHandler(logFileHandler)
-    print('Package information for {}:'.format(args.package))
+
+    data = loadPackageData(args.package)
+    output = '\n'.join([
+        'Information for {}:'.format(data['name']),
+        'Type: {}'.format(data['type']),
+        'Latest release: {}'.format(data['latest']),
+        'Latest stable release: {}'.format(data['latest_stable']),
+        'Releases:'
+    ])
+
+    # It's messy but it works. Don't look too close.
+    for release in data['releases'].keys():
+        if args.version == release or args.version == '<all>':
+            output += '\n* {}'.format(release)
+            output += '\n  * Release notes: {}'.format(data['releases'][release]['release_notes'])
+            output += '\n  * Stable: {}'.format('yes' if data['releases'][release]['stable'] else 'no')
+            output += '\n  * Platforms:'
+            for platform in data['releases'][release]['platforms'].keys():
+                output += '\n    * {} ({})'.format(platform, ', '.join([os for os in data['releases'][release]['platforms'][platform].keys()]))
+
+    print(output)
 
 def add_repo(args, config):
     log = logging.getLogger('add-repo')
@@ -50,7 +70,7 @@ def install(args, config):
     log.setLevel(logging.DEBUG)
     log.addHandler(logStreamHandler)
     log.addHandler(logFileHandler)
-    log.info('Attempting to install "{}" version "{}"'.format(args.package, args.version))
+    log.info('Attempting to install {} version {} on {} ({})'.format(args.package, args.version, platform.os, platform.arch))
 
     # Fetch package data
     packageData = loadPackageData(args.package)

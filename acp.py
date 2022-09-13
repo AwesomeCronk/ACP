@@ -13,8 +13,7 @@ def getArgs(argv):
         '-l',
         help='importance level cutoff for logging',
         type = str,
-        default=['config'],
-        nargs=1
+        default='config'
     )
 
     subParsers = rootParser.add_subparsers(dest='command')
@@ -26,6 +25,13 @@ def getArgs(argv):
         'package',
         help='package for which to fetch info',
         type=str
+    )
+    infoParser.add_argument(
+        '-v',
+        '--version',
+        help='specific version for which to give info',
+        type=str,
+        default='<all>'
     )
 
     add_repoParser = subParsers.add_parser('add-repo', help='Add package repositories')
@@ -102,15 +108,15 @@ if __name__ == '__main__':
 
     config = readConfig(paths.config)
 
-    if args.log_level == ['config']:
+    if args.log_level == 'config':
         if config['log-level'] in logLevels.keys():
             logStreamHandler.setLevel(logLevels[config['log-level']])
         else: log.error('Invalid log level "{}" from configuration'.format(config['log-level'])); sys.exit(1)
 
     else:
-        if args.log_level[0] in logLevels.keys():
-            logStreamHandler.setLevel(logLevels[args.log_level[0]])
-        else: log.error('Invalid log level "{}"'.format(args.log_level[0])); sys.exit(1)
+        if args.log_level in logLevels.keys():
+            logStreamHandler.setLevel(logLevels[args.log_level])
+        else: log.error('Invalid log level "{}"'.format(args.log_level)); sys.exit(1)
         
 
     log.addHandler(logFileHandler)

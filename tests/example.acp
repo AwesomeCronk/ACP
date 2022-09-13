@@ -1,8 +1,8 @@
 {
     name: 'example_program',
     type: 'program',
-    latest: '0.0.1.dev',
-    latest_stable: null,
+    latest: '1.0.0',
+    latest_stable: '1.0.0',
     releases:
     {
         '0.0.1.dev':
@@ -17,7 +17,31 @@
                     {
                         files:
                         [
-                            {path: 'example', source: 'https://example.com/example-program/linux-release/example', action: 'write'},
+                            {path: 'example', source: 'https://example.com/example-program/0.0.1.dev/linux-release/example', action: 'write'},
+                            {path: 'LICENSE', source: 'https://example.com/example-program/LICENSE', action: 'write'},
+                            {path: 'README.md', source: 'https://example.com/example-program/README.md', action: 'write'}
+                        ],
+                        links:
+                        [
+                            {name: 'example', target: 'example'}
+                        ]
+                    }
+                }
+            }
+        },
+        '1.0.0':
+        {
+            release_notes: 'First full release',
+            stable: true,
+            platforms:
+            {
+                x86_64:
+                {
+                    Linux:
+                    {
+                        files:
+                        [
+                            {path: 'example', source: 'https://example.com/example-program/0.0.1.dev/linux-release/example', action: 'write'},
                             {path: 'LICENSE', source: 'https://example.com/example-program/LICENSE', action: 'write'},
                             {path: 'README.md', source: 'https://example.com/example-program/README.md', action: 'write'}
                         ],
@@ -31,7 +55,7 @@
                     {
                         files:
                         [
-                            {path: 'example.exe', source: 'https://example.com/example-program/windows-release/example.exe', action: 'write'},
+                            {path: 'example.exe', source: 'https://example.com/example-program/0.0.1.dev/windows-release/example.exe', action: 'write'},
                             {path: 'LICENSE', source: 'https://example.com/example-program/LICENSE', action: 'write'},
                             {path: 'README.md', source: 'https://example.com/example-program/README.md', action: 'write'}
                         ],
