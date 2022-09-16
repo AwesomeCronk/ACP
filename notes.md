@@ -1,4 +1,4 @@
-For environment variables on linux, use environment.d. This will only be available on systemd systems, but it's the best option. Apparently works similar to Windows environment variables.
+For environment variables on linux, use /etc/environment or ~/.profile.
 
 Let b-fuze (Mike32)#9778 on Ubuntu Hideout know if you can update variables without logging in/out.
 

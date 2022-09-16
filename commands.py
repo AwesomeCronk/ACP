@@ -73,54 +73,88 @@ def install(args, config):
     log.info('Attempting to install {} version {} on {} ({})'.format(args.package, args.version, platform.os, platform.arch))
 
     # Fetch package data
-    packageData = loadPackageData(args.package)
+    packageData, packageFilePath = loadPackageData(args.package)
+    packageTypedefs = loadPackageTypedefs('system')
+    if not args.system:
+        packageTypedefs.update(loadPackageTypedefs('user'))
+    log.debug('Available package typedefs: {}'.format(', '.join(list(packageTypedefs.keys()))))
 
-    packageTypedefs = loadPackageTypes()
+    if args.version == 'latest_stable':
+        if not packageData['latest_stable'] is None:
+            versionToInstall = packageData['latest_stable']
+        else: log.error('No latest_stable version defined in this package.'); sys.exit(1)
 
-    if packageData['type'] == 'package-typedef':
-        if platform in packageData['releases']['global']['platforms'].keys():
-            pass
-            # Get file and link locations for defined package type and create them
-            # Get install location for package-typedefs from packageTypedefs['package-typedef'] and copy package file there
+    elif args.version == 'latest':
+        if not packageData['latest'] is None:
+            versionToInstall = packageData['latest']
+        else: log.error('No latest version defined in this package.'); sys.exit(1)
+
+    elif args.version in packageData['releases']:
+        versionToInstall = args.version
+
+    else: log.error('Package "{}" has no version "{}".'.format(args.package, args.version)); sys.exit(1)
+
+    platforms = packageData['releases'][versionToInstall]['platforms']
+    archs = platforms.keys()
+    if platform.arch in archs:
+        oses = platforms[platform.arch]
+        if platform.os in oses.keys():
+            files = oses[platform.os]['files']
+            links = oses[platform.os]['links']
+
+        else: log.error('No install definition for {}'.format(platform.os)); sys.exit(1)
+    else: log.error('No install definition for {}'.format(platform.arch)); sys.exit(1)
+
+    if packageData['type'] == 'package_typedef':
+        sourcePath = packageFilePath
+
+        def _processFile(file):
+            log.debug('Processing {} (action: {})'.format(file['path'], file['action']))
+            for action in file['action'].split(';'):
+                if action.strip() == '': continue
+                command, *args = action.strip().split()
+
+                if command == 'ensure':
+                    log.debug('Ensuring existence of {}'.format(file['path']))
+                elif command == 'modvar':
+                    log.debug('Modifying environment variable {} to include {}'.format(args[0], file['path']))
+
+        if args.system:
+            log.info('Installing for whole system')
+            targetPath = paths.systemData.joinpath('_package_typedefs').joinpath(packageFilePath.name)
+
+            for file in files:
+                if file['source'] == 'system':
+                    _processFile(file)
+            for link in links:
+                if link['source'] == 'system':
+                    _processFile(link)
+            
+        else:
+            log.info('Installing for current user only')
+            targetPath = paths.userData.joinpath('_package_typedefs').joinpath(packageFilePath.name)
+
+            for file in files:
+                if file['source'] == 'user':
+                    _processFile(file)
+            for link in links:
+                if link['source'] == 'user':
+                    _processFile(link)
+            
+        log.debug('Copying {} to {}'.format(sourcePath, targetPath))
+
+    elif packageData['type'] in packageTypedefs.keys():
+        # Install package
+        fileDir = packageTypedefs[packageData['type']]['files']['user'].joinpath(packageData['name'])
+        for file in files:
+            if file['action'] == 'write':
+                log.debug('Writing to {}'.format(fileDir.joinpath(file['path'])))
+        
+        linkDir = packageTypedefs[packageData['type']]['links']['user']
+        for link in links:
+            log.debug('Linking {} to {}'.format(linkDir.joinpath(link['name']), fileDir.joinpath(link['target'])))
+
+        print('Installed {}'.format(args.package))
 
     else:
-        if args.version == 'latest_stable':
-            if not packageData['latest_stable'] is None:
-                versionToInstall = packageData['latest_stable']
-            else: log.error('No latest_stable version defined in this package.'); sys.exit(1)
-
-        elif args.version == 'latest':
-            if not packageData['latest'] is None:
-                versionToInstall = packageData['latest']
-            else: log.error('No latest version defined in this package.'); sys.exit(1)
-
-        elif args.version in packageData['releases']:
-            versionToInstall = args.version
-
-        else: log.error('Package "{}" has no version "{}".'.format(args.package, args.version)); sys.exit(1)
-
-        platforms = packageData['releases'][versionToInstall]['platforms']
-        archs = platforms.keys()
-        if platform.arch in archs:
-            oses = platforms[platform.arch]
-            if platform.os in oses.keys():
-                files = oses[platform.os]['files']
-                links = oses[platform.os]['links']
-
-            else: log.error('No install definition for {}'.format(platform.os)); sys.exit(1)
-        else: log.error('No install definition for {}'.format(platform.arch)); sys.exit(1)
-
-        # Install package
-        log.info('Installing package "{}" version "{}"'.format(packageData['name'], versionToInstall))
-        log.debug('Name: {}\nType: {}\nAvailable versions: {}'.format(packageData['name'], packageData['type'], ', '.join([v for v in packageData['releases'].keys()])))
-
-
-        print('Files:')
-        for fileData in files:
-            print('-', fileData['path'])
-        
-        print('Links:')
-        for linkData in links:
-            print('-', linkData['name'])
-
-    print('Installed {}'.format(args.package))
+        print('Did not install {}, unknown package type "{}"'.format(packageData['name'], packageData['type']))

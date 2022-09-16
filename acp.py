@@ -9,8 +9,8 @@ from commands import *
 def getArgs(argv):
     rootParser = argparse.ArgumentParser(prog='ACP', description='A package manager that aims to eliminate the headaches other package managers are prone to.')
     rootParser.add_argument(
-        '--log-level',
         '-l',
+        '--log-level',
         help='importance level cutoff for logging',
         type = str,
         default='config'
@@ -75,10 +75,10 @@ def getArgs(argv):
         default='latest_stable'
     )
     installParser.add_argument(
-        '-l',
-        '--location',
-        help='location in which to install the package',
-        type=pathlib.Path
+        '-s',
+        '--system',
+        help='install for whole system',
+        action='store_true'
     )
 
     return rootParser.parse_args(argv)
@@ -89,20 +89,27 @@ if __name__ == '__main__':
     log = logging.getLogger('__main__')
     log.setLevel(logging.DEBUG)
     log.addHandler(logStreamHandler)
+    log.addHandler(logFileHandler)
+    log.debug('=========={}=========='.format(datetime.now().strftime('%Y-%m-%d %H:%M')))
 
 
     # Make sure the environment is set up ok
-    if not paths.localData.exists():
-        log.info('Local data directory not found, creating it now.')
-        paths.localData.mkdir(parents=True, exist_ok=True)
+    if not paths.userData.exists():
+        log.info('User data directory not found, creating it now')
+        paths.userData.mkdir(parents=True, exist_ok=True)
+
+    if not paths.systemData.exists():
+        log.info('System data directory not found, creating it now')
+        try: paths.systemData.mkdir(parents=True, exist_ok=True)
+        except PermissionError: log.info('Unable to create system data directory, must be run as root to do so')
 
     if not paths.config.exists():
-        log.info('Config file not found, creating it now.')
+        log.info('Config file not found, creating it now')
         paths.config.touch()
         writeConfig(paths.config, defaultConfig)
 
     if not paths.repositories.exists():
-        log.info('Repository directory not found, creating it now.')
+        log.info('Repository directory not found, creating it now')
         paths.repositories.mkdir(parents=True, exist_ok=True)
 
 
@@ -117,10 +124,5 @@ if __name__ == '__main__':
         if args.log_level in logLevels.keys():
             logStreamHandler.setLevel(logLevels[args.log_level])
         else: log.error('Invalid log level "{}"'.format(args.log_level)); sys.exit(1)
-        
-
-    log.addHandler(logFileHandler)
-    log.debug('=========={}=========='.format(datetime.now().strftime('%Y-%m-%d %H:%M')))
-
 
     args.function(args, config)

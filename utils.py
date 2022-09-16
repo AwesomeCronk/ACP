@@ -8,15 +8,21 @@ from constants import paths, platform
 logStreamHandler = logging.StreamHandler()
 logStreamHandler.setLevel(logging.DEBUG)
 
-logFileHandler = logging.FileHandler(paths.log, mode='a')
+try: logFileHandler = logging.FileHandler(paths.log, mode='a')
+except FileNotFoundError:
+    altLogPath = pathlib.Path('./acp_log.txt').resolve()
+    logFileHandler = logging.FileHandler(altLogPath, mode='a')
+    print('Proper log file not available, writing log to {}'.format(altLogPath))
 logFileHandler.setLevel(logging.DEBUG)
 
-logFormatter = logging.Formatter('%(levelname)8s | %(name)s - %(message)s')
+logFormatter = logging.Formatter('[%(levelname)s] %(name)s || %(message)s')
 logStreamHandler.setFormatter(logFormatter)
 logFileHandler.setFormatter(logFormatter)
 
 loadingLogger = logging.getLogger('loading')
 loadingLogger.setLevel(logging.DEBUG)
+loadingLogger.addHandler(logStreamHandler)
+loadingLogger.addHandler(logFileHandler)
 
 
 def readConfig(filePath):
@@ -39,8 +45,8 @@ def getDependency(name, logger):
 
 
 def getURLType(url: str):
-    # ./package.acp | /home/user/Downloads/package.acp
-    if url[0] in ('.', '/'):    # Going to need changed for Windows support
+    # ./package.acp || /home/user/Downloads/package.acp
+    if url[0] in ('.', '/', '~'):    # Going to need changed for Windows support
         return 'file'
     # package
     elif url.count('/') == 0:
@@ -60,6 +66,8 @@ def loadPackageData(packageName):
     if urlType == 'name':
         # Search available repositories for package, then fetch package data
         packageData = ''
+        packageFilePath = ''
+        raise NotImplementedError
 
     elif urlType == 'repo/name':
         # Check specified repo for package, then fetch package data
@@ -80,8 +88,7 @@ def loadPackageData(packageName):
                         foundPackage = True
 
             if foundPackage:
-                with open(repositoryPath.joinpath(packagePath), 'r') as packageFile:
-                    packageData = packageFile.read()
+                packageFilePath = repositoryPath.joinpath(packagePath)
 
             else: log.error('Repository "{}" has no entry for package "{}"'.format(repo, name)); sys.exit(1)
 
@@ -89,84 +96,82 @@ def loadPackageData(packageName):
 
     elif urlType == 'file':
         # Read file to fetch package data
-        with open(pathlib.Path(packageName).resolve(), 'r') as file:
-            packageData = file.read()
+        packageFilePath = pathlib.Path(packageName).expanduser().resolve()
 
     else:
         log.error('Unable to resolve URL type for "{}"'.format(packageName)); sys.exit(1)
 
-    # Parse package data
-    return json5.loads(packageData)
+    with open(packageFilePath, 'r') as packageFile:
+        packageData = packageFile.read()
 
-def loadPackageTypes():
+    # Parse package data
+    return json5.loads(packageData), packageFilePath
+
+def loadPackageTypedefs(context):
     log = loadingLogger
-    typeDefs = {
+    # Typedefs are handled in this structure during runtime, but stored as a standard .acp package
+    typedefs = {
         'package_typedef':
         {
-            'global':
+            'files':
             {
-                'install_path': paths.globalData.joinpath('_packageTypes'),
-                'link_path': paths.globalData.joinpath('_packageTypes/links')   # Shouldn't ever be used, but this way if it used is by accident nothing gets broken
+                'system': paths.systemData.joinpath('_package_typedefs'),
+                'user': paths.userData.joinpath('_package_typedefs')
             },
-            'local':
+            'links':    # Shouldn't ever be used, but this way if they are used by accident nothing gets broken
             {
-                'install_path': paths.localData.joinpath('_packageTypes'),
-                'link_path': paths.localData.joinpath('_packageTypes/links')    # Shouldn't ever be used, but this way if it used is by accident nothing gets broken
+                'system': paths.systemData.joinpath('_package_typedefs/_links'),
+                'user': paths.userData.joinpath('_package_typedefs/_links')
             }
         }
     }
 
-    log.debug(typeDefs['package_typedef']['local']['install_path'])
-    log.debug(typeDefs['package_typedef']['local']['install_path'].glob('*'))
-    typeDefPaths = typeDefs['package_typedef']['local']['install_path'].glob('*')
-    for typeDefPath in typeDefPaths:
-        log.debug(typeDefPath)
-        with open(typeDefPath, 'r') as typeDefFile:
-            typeDef = json5.load(typeDefFile)
+    typedefPaths = typedefs['package_typedef']['files'][context].glob('*')
+
+    for typedefPath in typedefPaths:
+        log.debug(typedefPath)
+        with open(typedefPath, 'r') as typedefFile:
+            typedef = json5.load(typedefFile)
             
             # I have finally come to understand that programming is 94% error checking user input and 5% actual logic implementation.
             # I do not know where the other 1% went.
-            if typeDef['name'] == 'package_typedef':
-                log.debug('Not loading "{}" ({}), refuse to override core "package_typedef".'.format(typeDef['name'], typeDefPath))
-                continue
-            if typeDef['type'] != 'package_typedef':
-                log.debug('Not loading "{}" ({}), not of type "package_typedef".'.format(typeDef['name'], typeDefPath))
-                continue
-            if list(typeDef['versions'].keys()) != ['global', 'local']:
-                log.debug('Not loading "{}" ({}), lacks global and/or local definitions.'.format(typeDef['name'], typeDefPath))
-                continue
-            if (not platform in typeDef['global']['platforms'].keys()) or (not platform in typeDef['local']['platforms'].keys()):
-                log.debug('Not loading "{}" ({}), Lacks definition for {}.'.format(typeDef['name'], typeDefPath, platform))
-                continue
+            
+            # Name and type checks
+            if typedef['name'] == 'package_typedef':
+                log.warning('skipping typedef {}, refuse to override core "package_typedef"'.format(typedef['name'])); continue
+            if typedef['type'] != 'package_typedef':
+                log.warning('skipping typedef {}, is not of type package_typedef'.format(typedef['name'])); continue
+            
+            # Platform compatibility checks
+            typedefPlatforms = typedef['releases']['all']['platforms']
+            if not platform.arch in typedefPlatforms.keys():
+                log.debug('skipping typedef {}, lacks definition for {}'.format(typedef['name'], platform.arch)); continue
+            if not platform.os in typedefPlatforms[platform.arch].keys():
+                log.debug('skipping typedef {}, lacks definition for {}'.format(typedef['name'], platform.os)); continue
+            typedefInstallData = typedefPlatforms[platform.arch][platform.os]
 
-            files = typeDef['global']['platforms'][platform]['files']
-            for file in files:
-                if file['source'] == 'packages':
-                    globalPackages = file['path']
-                if file['source'] == 'links':
-                    globalLinks = file['path']
-            files = typeDef['local']['platforms'][platform]['files']
-            for file in files:
-                if file['source'] == 'packages':
-                    localPackages = file['path']
-                if file['source'] == 'links':
-                    localLinks = file['path']
-
-            typeDefs[typeDef['name']] = {
-                'global':
-                {
-                    'install_path': globalPackages,
-                    'link_path': globalLinks
-                },
-                'local':
-                {
-                    'install_path': localPackages,
-                    'link_path': localLinks
-                }
+            # Global/user definition checks
+            if not (
+                [file['source'] for file in typedefInstallData['files']]
+                == [link['source'] for link in typedefInstallData['links']]
+                == ['system', 'user']
+            ):
+                log.debug('skipping typedef {}, system/user definitions for files and/or links are incorrect'); continue
+            
+            # Compile the typedef
+            compiledTypedef = {
+                'files': {},
+                'links': {}
             }
-            log.debug('Loaded package typedef "{}".'.format(typeDef['name']))
+            for file in typedefInstallData['files']:
+                compiledTypedef['files'] = {file['source']: pathlib.Path(file['path']).expanduser().resolve()}
+            for link in typedefInstallData['links']:
+                compiledTypedef['links'] = {link['source']: pathlib.Path(link['path']).expanduser().resolve()}
 
-    return typeDefs
+            typedefs[typedef['name']] = compiledTypedef
+
+            log.debug('Loaded package typedef: {}'.format(typedef['name']))
+    return typedefs
 
 
 def exec(path, command):  # Wrapper for subprocess to facilitate one-line git 

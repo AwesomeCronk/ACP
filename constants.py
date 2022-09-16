@@ -14,11 +14,11 @@ class _paths: pass
 paths = _paths()
 
 if platform.os == 'Linux':
-    paths.globalData = pathlib.Path('/etc/ACP')
-    paths.localData = pathlib.Path('~/.local/share/ACP').expanduser()
-    paths.log = paths.localData.joinpath('log.txt')
-    paths.config = paths.localData.joinpath('config.json')
-    paths.repositories = paths.localData.joinpath('repositories')
+    paths.systemData = pathlib.Path('/etc/acp')
+    paths.userData = pathlib.Path('~/.local/share/acp').expanduser()
+    paths.log = paths.userData.joinpath('log.txt')
+    paths.config = paths.userData.joinpath('config.json')
+    paths.repositories = paths.userData.joinpath('repositories')
 elif platform.os == 'Windows':
     raise RuntimeError('Windows is not yet supported - I hope to change that soon!')
 else:
@@ -47,5 +47,5 @@ logLevels = {
 }
 
 defaultConfig = {
-    'debug-level': 'info'
+    'log-level': 'info'
 }
