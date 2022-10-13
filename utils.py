@@ -144,11 +144,16 @@ def loadPackageTypedefs(context):
             
             # Platform compatibility checks
             typedefPlatforms = typedef['releases']['all']['platforms']
-            if not platform.arch in typedefPlatforms.keys():
+            if platform.arch in typedefPlatforms.keys():
+                typdedefOSes = typedefPlatforms[platform.arch]
+            elif 'any' in typedefPlatforms.keys():
+                typdedefOSes = typedefPlatforms[platform.arch]
+            else:
                 log.debug('skipping typedef {}, lacks definition for {}'.format(typedef['name'], platform.arch)); continue
-            if not platform.os in typedefPlatforms[platform.arch].keys():
+            
+            if not platform.os in typdedefOSes.keys():
                 log.debug('skipping typedef {}, lacks definition for {}'.format(typedef['name'], platform.os)); continue
-            typedefInstallData = typedefPlatforms[platform.arch][platform.os]
+            typedefInstallData = typdedefOSes[platform.os]
 
             # Global/user definition checks
             if not (

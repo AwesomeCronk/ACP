@@ -96,14 +96,17 @@ def install(args, config):
 
     platforms = packageData['releases'][versionToInstall]['platforms']
     archs = platforms.keys()
+    oses = None
     if platform.arch in archs:
         oses = platforms[platform.arch]
-        if platform.os in oses.keys():
-            files = oses[platform.os]['files']
-            links = oses[platform.os]['links']
-
-        else: log.error('No install definition for {}'.format(platform.os)); sys.exit(1)
+    elif 'any' in archs:
+        oses = platforms[platform.arch]
     else: log.error('No install definition for {}'.format(platform.arch)); sys.exit(1)
+
+    if (not oses is None) and platform.os in oses.keys():
+        files = oses[platform.os]['files']
+        links = oses[platform.os]['links']
+    else: log.error('No install definition for {}'.format(platform.os)); sys.exit(1)
 
     if packageData['type'] == 'package_typedef':
         sourcePath = packageFilePath
