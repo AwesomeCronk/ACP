@@ -1,10 +1,11 @@
-import argparse, pathlib, shutil, subprocess, shlex, sys, logging
+import pathlib, shutil, subprocess, shlex, sys, logging
 
 import json5
 
 from constants import paths, platform
 
 
+# Logging
 logStreamHandler = logging.StreamHandler()
 logStreamHandler.setLevel(logging.DEBUG)
 
@@ -25,6 +26,7 @@ loadingLogger.addHandler(logStreamHandler)
 loadingLogger.addHandler(logFileHandler)
 
 
+# Config
 def readConfig(filePath):
     with open(filePath, 'r') as configFile:
         config = json5.load(configFile)
@@ -35,6 +37,7 @@ def writeConfig(filePath, config):
         json5.dump(config, configFile)
 
 
+# Dependencies
 def getDependency(name, logger):
     result = shutil.which(name)
     if result is None:
@@ -43,7 +46,12 @@ def getDependency(name, logger):
     else:
         return result
 
+def exec(path, command):
+    proc = subprocess.Popen([path, *shlex.split(command)], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    return ''.join([line.decode() for line in proc.communicate()]).encode()
 
+
+# Package URLs
 def getURLType(url: str):
     # ./package.acp || /home/user/Downloads/package.acp
     if url[0] in ('.', '/', '~'):    # Going to need changed for Windows support
@@ -58,6 +66,8 @@ def getURLType(url: str):
     else:
         return 'unknown'
 
+
+# Package loading
 def loadPackageData(packageName):
     log = loadingLogger
     urlType = getURLType(packageName)
@@ -155,7 +165,7 @@ def loadPackageTypedefs(context):
                 log.debug('skipping typedef {}, lacks definition for {}'.format(typedef['name'], platform.os)); continue
             typedefInstallData = typdedefOSes[platform.os]
 
-            # Global/user definition checks
+            # System/user definition checks
             if not (
                 [file['source'] for file in typedefInstallData['files']]
                 == [link['source'] for link in typedefInstallData['links']]
@@ -177,8 +187,3 @@ def loadPackageTypedefs(context):
 
             log.debug('Loaded package typedef: {}'.format(typedef['name']))
     return typedefs
-
-
-def exec(path, command):  # Wrapper for subprocess to facilitate one-line git 
-    proc = subprocess.Popen([path, *shlex.split(command)], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-    return ''.join([line.decode() for line in proc.communicate()]).encode()

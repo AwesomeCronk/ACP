@@ -1,5 +1,4 @@
-import logging, os, requests
-import json5
+import logging, os
 
 from utils import *
 
@@ -79,6 +78,7 @@ def install(args, config):
         packageTypedefs.update(loadPackageTypedefs('user'))
     log.debug('Available package typedefs: {}'.format(', '.join(list(packageTypedefs.keys()))))
 
+    # Version picking
     if args.version == 'latest_stable':
         if not packageData['latest_stable'] is None:
             versionToInstall = packageData['latest_stable']
@@ -94,6 +94,7 @@ def install(args, config):
 
     else: log.error('Package "{}" has no version "{}".'.format(args.package, args.version)); sys.exit(1)
 
+    # Platform picking
     platforms = packageData['releases'][versionToInstall]['platforms']
     archs = platforms.keys()
     oses = None
@@ -108,6 +109,7 @@ def install(args, config):
         links = oses[platform.os]['links']
     else: log.error('No install definition for {}'.format(platform.os)); sys.exit(1)
 
+    # Install typedef
     if packageData['type'] == 'package_typedef':
         sourcePath = packageFilePath
 
@@ -146,8 +148,8 @@ def install(args, config):
             
         log.debug('Copying {} to {}'.format(sourcePath, targetPath))
 
+    # Install regular package
     elif packageData['type'] in packageTypedefs.keys():
-        # Install package
         fileDir = packageTypedefs[packageData['type']]['files']['user'].joinpath(packageData['name'])
         for file in files:
             if file['action'] == 'write':
