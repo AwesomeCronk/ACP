@@ -1,4 +1,4 @@
-import pathlib, shutil, subprocess, shlex, sys, logging
+import logging, pathlib, shutil, subprocess, shlex, sys, requests
 
 import json5
 
@@ -16,14 +16,14 @@ except FileNotFoundError:
     print('Proper log file not available, writing log to {}'.format(altLogPath))
 logFileHandler.setLevel(logging.DEBUG)
 
-logFormatter = logging.Formatter('[%(levelname)s] %(name)s || %(message)s')
+logFormatter = logging.Formatter('%(levelname)8s %(name)s || %(message)s')
 logStreamHandler.setFormatter(logFormatter)
 logFileHandler.setFormatter(logFormatter)
 
-loadingLogger = logging.getLogger('loading')
-loadingLogger.setLevel(logging.DEBUG)
-loadingLogger.addHandler(logStreamHandler)
-loadingLogger.addHandler(logFileHandler)
+loadingLog = logging.getLogger('loading')
+loadingLog.setLevel(logging.DEBUG)
+loadingLog.addHandler(logStreamHandler)
+loadingLog.addHandler(logFileHandler)
 
 
 # Config
@@ -42,7 +42,7 @@ def getDependency(name, logger):
     result = shutil.which(name)
     if result is None:
         logger.error('dependency "{}" not found'.format(name))
-        raise RuntimeError('This operation requires that "{}" is installed and available on PATH.'.format(name))
+        return False
     else:
         return result
 
@@ -67,9 +67,9 @@ def getURLType(url: str):
         return 'unknown'
 
 
-# Package loading
+# Package and data loading
 def loadPackageData(packageName):
-    log = loadingLogger
+    log = loadingLog
     urlType = getURLType(packageName)
     log.debug('URL type: {}'.format(urlType))
     
@@ -118,7 +118,7 @@ def loadPackageData(packageName):
     return json5.loads(packageData), packageFilePath
 
 def loadPackageTypedefs(context):
-    log = loadingLogger
+    log = loadingLog
     # Typedefs are handled in this structure during runtime, but stored as a standard .acp package
     typedefs = {
         'package_typedef':
@@ -187,3 +187,45 @@ def loadPackageTypedefs(context):
 
             log.debug('Loaded package typedef: {}'.format(typedef['name']))
     return typedefs
+
+def readSource(url):
+    if url[0:8] == 'https://' or url[0:7] == 'http://':
+        try:
+            resp = requests.get(url)
+        except requests.exceptions.ConnectionError:
+            loadingLog.error('Unable to connect to remote host ({})'.format(url)); sys.exit(1)
+        if resp.ok == False:
+            loadingLog.error('Request failed, code {} ({})'.format(resp.status_code, url)); sys.exit(1)
+        data = resp.content
+    
+    else:
+        try:
+            with open(url, 'rb') as file:
+                data = file.read()
+        except FileNotFoundError:
+            loadingLog.error('File not found ({})'.format(url)); sys.exit(1)
+    
+    return data
+
+
+# Filesystem interaction
+def ensureFileExists(path):
+    path = path.expanduser()
+    # Does not overwrite existing files
+    if path.is_file():
+        return
+
+    elif path.is_dir():
+        raise FileExistsError('A directory exists at {}, cannot create file there.'.format(path))
+
+    else:
+        file = open(path, 'a'); file.close()
+
+def ensureDirExists(path):
+    path = path.expanduser()
+    # Does not overwrite existing directories
+    if path.is_dir():
+        return
+
+    else:
+        path.mkdir(parents=True, exist_ok=False)    # Don't catch FileExistsError here, let it propagate.

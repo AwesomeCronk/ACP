@@ -46,6 +46,8 @@ logLevels = {
     'critical': logging.CRITICAL
 }
 
+logNameLen = 8
+
 defaultConfig = {
     'log-level': 'info'
 }

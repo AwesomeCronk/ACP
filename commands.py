@@ -1,5 +1,6 @@
-import logging, os
+import logging, os, shutil
 
+from constants import logNameLen
 from utils import *
 
 
@@ -36,6 +37,7 @@ def add_repo(args, config):
     log.addHandler(logStreamHandler)
     log.addHandler(logFileHandler)
     git = getDependency('git', log)
+    if git is None: exit(1)
     os.chdir(paths.repositories)
     gitOutput = exec(git, 'clone {}'.format(args.repository))  # git clone <args.repository>
     log.debug(gitOutput.decode())
@@ -65,7 +67,7 @@ def docs(args, config):
     print('Listing documentation for {}:'.format(args.topic))
 
 def install(args, config):
-    log = logging.getLogger('install')
+    log = logging.getLogger('install'.ljust(logNameLen))
     log.setLevel(logging.DEBUG)
     log.addHandler(logStreamHandler)
     log.addHandler(logFileHandler)
@@ -74,8 +76,7 @@ def install(args, config):
     # Fetch package data
     packageData, packageFilePath = loadPackageData(args.package)
     packageTypedefs = loadPackageTypedefs('system')
-    if not args.system:
-        packageTypedefs.update(loadPackageTypedefs('user'))
+    if not args.system: packageTypedefs.update(loadPackageTypedefs('user'))
     log.debug('Available package typedefs: {}'.format(', '.join(list(packageTypedefs.keys()))))
 
     # Version picking
@@ -101,7 +102,7 @@ def install(args, config):
     if platform.arch in archs:
         oses = platforms[platform.arch]
     elif 'any' in archs:
-        oses = platforms[platform.arch]
+        oses = platforms['any']
     else: log.error('No install definition for {}'.format(platform.arch)); sys.exit(1)
 
     if (not oses is None) and platform.os in oses.keys():
@@ -113,51 +114,76 @@ def install(args, config):
     if packageData['type'] == 'package_typedef':
         sourcePath = packageFilePath
 
-        def _processFile(file):
+        def _processFile(file, isLink=False):
             log.debug('Processing {} (action: {})'.format(file['path'], file['action']))
             for action in file['action'].split(';'):
                 if action.strip() == '': continue
                 command, *args = action.strip().split()
 
                 if command == 'ensure':
-                    log.debug('Ensuring existence of {}'.format(file['path']))
-                elif command == 'modvar':
-                    log.debug('Modifying environment variable {} to include {}'.format(args[0], file['path']))
+                    log.debug('Ensuring existence')
+                    ensureDirExists(pathlib.Path(file['path']))
 
-        if args.system:
-            log.info('Installing for whole system')
-            targetPath = paths.systemData.joinpath('_package_typedefs').joinpath(packageFilePath.name)
+                elif command == 'modvars':
+                    log.debug('!Modifying system environment variable {}'.format(args[0]))
 
-            for file in files:
-                if file['source'] == 'system':
-                    _processFile(file)
-            for link in links:
-                if link['source'] == 'system':
-                    _processFile(link)
-            
-        else:
-            log.info('Installing for current user only')
-            targetPath = paths.userData.joinpath('_package_typedefs').joinpath(packageFilePath.name)
+                elif command == 'modvaru':
+                    log.debug('!Modifying user environment variable {}'.format(args[0]))
 
-            for file in files:
-                if file['source'] == 'user':
-                    _processFile(file)
-            for link in links:
-                if link['source'] == 'user':
-                    _processFile(link)
-            
+        log.info('Installing typedef for {}'.format('whole system' if args.system else os.getlogin()))
+        targetPath = (paths.systemData if args.system else paths.userData).joinpath('_package_typedefs').joinpath(packageFilePath.name)
+
+        for file in files:
+            if file['source'] == ('system' if args.system else 'user'):
+                _processFile(file)
+        for link in links:
+            if link['source'] == ('system' if args.system else 'user'):
+                _processFile(link, True)
+                
+        # Make a copy of the typedef file to be available for installing packages later
         log.debug('Copying {} to {}'.format(sourcePath, targetPath))
+        with open(sourcePath, 'rb') as sourceFile:
+            with open(targetPath, 'wb') as targetFile:
+                targetFile.write(sourceFile.read())
 
     # Install regular package
     elif packageData['type'] in packageTypedefs.keys():
-        fileDir = packageTypedefs[packageData['type']]['files']['user'].joinpath(packageData['name'])
-        for file in files:
-            if file['action'] == 'write':
-                log.debug('Writing to {}'.format(fileDir.joinpath(file['path'])))
+        fileDir = packageTypedefs[packageData['type']]['files']['system' if args.system else 'user']
+        fileDir = fileDir.joinpath(packageData['name']).joinpath(versionToInstall)
+        linkDir = packageTypedefs[packageData['type']]['links']['system' if args.system else 'user']
         
-        linkDir = packageTypedefs[packageData['type']]['links']['user']
+        if fileDir.is_dir():
+            log.info('Detected previous installation, removing it')
+            shutil.rmtree(fileDir)
+        ensureDirExists(fileDir)
+
+        def _processFile(file, isLink=False):
+            if isLink:
+                link = file
+                linkPath = linkDir.joinpath(link['name'])
+                targetPath = fileDir.joinpath(link['target'])
+                log.info('Linking {} to {}'.format(linkPath, targetPath))
+                linkPath.symlink_to(targetPath)
+
+            else:
+                for action in file['action'].split(';'):
+                    if action.strip() == '': continue
+                    command, *args = action.strip().split()
+
+                    if command == 'write':
+                        filePath = fileDir.joinpath(file['path'])
+                        log.info('Writing {}'.format(filePath))
+                        with open(filePath, 'wb') as destFile:
+                            destFile.write(readSource(file['source']))
+                    
+                    elif command == '7z':
+                        log.info('!Running 7zip ({})'.format(args))
+
+        for file in files:
+            _processFile(file)
+        
         for link in links:
-            log.debug('Linking {} to {}'.format(linkDir.joinpath(link['name']), fileDir.joinpath(link['target'])))
+            _processFile(link, True)
 
         print('Installed {}'.format(args.package))
 
