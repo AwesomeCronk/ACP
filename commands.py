@@ -174,10 +174,20 @@ def install(args, config):
                         filePath = fileDir.joinpath(file['path'])
                         log.info('Writing {}'.format(filePath))
                         with open(filePath, 'wb') as destFile:
-                            destFile.write(readSource(file['source']))
+                            destFile.write(readSource(file['source'], log))
                     
-                    elif command == '7z':
-                        log.info('!Running 7zip ({})'.format(args))
+                    elif command == '7zip':
+                        log.info('!Extracting 7zip archive')
+                        _7zip = getDependency('7z', log)
+                        if _7zip is None: sys.exit(1)
+                        ensureDirExists(paths.temp, log)
+                        archivePath = paths.temp.joinpath('archive.7z')
+                        with open(archivePath, 'wb') as archiveFile:
+                            archiveFile.write(readSource(file['source'], log))
+                        _7zipArgs = 'x -o{} {}'.format(file['path'], archivePath)
+                        log.debug(_7zipArgs)
+                        exec(_7zip, _7zipArgs)
+
 
         for file in files:
             _processFile(file)

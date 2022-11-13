@@ -19,6 +19,7 @@ if platform.os == 'Linux':
     paths.log = paths.userData.joinpath('log.txt')
     paths.config = paths.userData.joinpath('config.json')
     paths.repositories = paths.userData.joinpath('repositories')
+    paths.temp = pathlib.Path('/tmp/acp')
 elif platform.os == 'Windows':
     raise RuntimeError('Windows is not yet supported - I hope to change that soon!')
 else:

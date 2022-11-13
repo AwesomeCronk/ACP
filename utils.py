@@ -38,10 +38,10 @@ def writeConfig(filePath, config):
 
 
 # Dependencies
-def getDependency(name, logger):
+def getDependency(name, log):
     result = shutil.which(name)
     if result is None:
-        logger.error('dependency "{}" not found'.format(name))
+        log.error('dependency "{}" not found'.format(name))
         return False
     else:
         return result
@@ -67,7 +67,7 @@ def getURLType(url: str):
         return 'unknown'
 
 
-# Package and data loading
+# Package loading
 def loadPackageData(packageName):
     log = loadingLog
     urlType = getURLType(packageName)
@@ -188,25 +188,6 @@ def loadPackageTypedefs(context):
             log.debug('Loaded package typedef: {}'.format(typedef['name']))
     return typedefs
 
-def readSource(url):
-    if url[0:8] == 'https://' or url[0:7] == 'http://':
-        try:
-            resp = requests.get(url)
-        except requests.exceptions.ConnectionError:
-            loadingLog.error('Unable to connect to remote host ({})'.format(url)); sys.exit(1)
-        if resp.ok == False:
-            loadingLog.error('Request failed, code {} ({})'.format(resp.status_code, url)); sys.exit(1)
-        data = resp.content
-    
-    else:
-        try:
-            with open(url, 'rb') as file:
-                data = file.read()
-        except FileNotFoundError:
-            loadingLog.error('File not found ({})'.format(url)); sys.exit(1)
-    
-    return data
-
 
 # Filesystem interaction
 def ensureFileExists(path):
@@ -229,3 +210,22 @@ def ensureDirExists(path):
 
     else:
         path.mkdir(parents=True, exist_ok=False)    # Don't catch FileExistsError here, let it propagate.
+
+def readSource(url, log):
+    if url[0:8] == 'https://' or url[0:7] == 'http://':
+        try:
+            resp = requests.get(url)
+        except requests.exceptions.ConnectionError:
+            log.error('Unable to connect to remote host ({})'.format(url)); sys.exit(1)
+        if resp.ok == False:
+            log.error('Request failed, code {} ({})'.format(resp.status_code, url)); sys.exit(1)
+        data = resp.content
+    
+    else:
+        try:
+            with open(url, 'rb') as file:
+                data = file.read()
+        except FileNotFoundError:
+            log.error('File not found ({})'.format(url)); sys.exit(1)
+    
+    return data
