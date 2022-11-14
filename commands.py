@@ -177,6 +177,12 @@ def install(args, config):
                         log.info('Writing {}'.format(filePath))
                         with open(filePath, 'wb') as destFile:
                             destFile.write(readSource(file['source'], log))
+                        if len(args):
+                            try:
+                                log.info('Setting permissions to {}'.format(args[0]))
+                                filePath.chmod(int('0o' + args[0], base=8))
+                            except ValueError:
+                                log.warning('Specified permissions invalid, did not set permissions')
                     
                     elif command == '7zip':
                         log.info('!Extracting 7zip archive')
