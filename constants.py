@@ -14,12 +14,20 @@ class _paths: pass
 paths = _paths()
 
 if platform.os == 'Linux':
+    # Data paths
     paths.systemData = pathlib.Path('/etc/acp')
     paths.userData = pathlib.Path('~/.local/share/acp').expanduser()
+    paths.temp = pathlib.Path('/tmp/acp')
+    
+    # Configuration and runtime stuff
     paths.log = paths.userData.joinpath('log.txt')
     paths.config = paths.userData.joinpath('config.json')
+    
+    # Repository and typedef storage
     paths.repositories = paths.userData.joinpath('repositories')
-    paths.temp = pathlib.Path('/tmp/acp')
+    paths.systemTypedefs = paths.systemData.joinpath('_package_typedefs')
+    paths.userTypedefs = paths.userData.joinpath('_package_typedefs')
+
 elif platform.os == 'Windows':
     raise RuntimeError('Windows is not yet supported - I hope to change that soon!')
 else:

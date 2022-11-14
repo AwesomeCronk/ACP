@@ -131,7 +131,7 @@ def install(args, config):
                     log.debug('!Modifying user environment variable {}'.format(args[0]))
 
         log.info('Installing typedef for {}'.format('whole system' if args.system else os.getlogin()))
-        targetPath = (paths.systemData if args.system else paths.userData).joinpath('_package_typedefs').joinpath(packageFilePath.name)
+        targetPath = (paths.systemData if args.system else paths.userTypedefs).joinpath(packageFilePath.name)
 
         for file in files:
             if file['source'] == ('system' if args.system else 'user'):
@@ -155,6 +155,8 @@ def install(args, config):
         if fileDir.is_dir():
             log.info('Detected previous installation, removing it')
             shutil.rmtree(fileDir)
+            for link in links:
+                linkDir.joinpath(link['name']).unlink()
         ensureDirExists(fileDir)
 
         def _processFile(file, isLink=False):

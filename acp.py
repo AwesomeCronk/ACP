@@ -94,22 +94,31 @@ if __name__ == '__main__':
 
 
     # Make sure the environment is set up ok
-    if not paths.userData.exists():
-        log.info('User data directory not found, creating it now')
-        paths.userData.mkdir(parents=True, exist_ok=True)
-
     if not paths.systemData.exists():
-        log.info('System data directory not found, creating it now')
+        log.info('Creating system data directory')
         try: paths.systemData.mkdir(parents=True, exist_ok=True)
         except PermissionError: log.info('Unable to create system data directory, must be run as root to do so')
 
+    if not paths.userData.exists():
+        log.info('Creating user data directory')
+        paths.userData.mkdir(parents=True, exist_ok=True)
+
+    if not paths.systemTypedefs.exists():
+        log.info('Creating system typedef directory')
+        try: paths.systemTypedefs.mkdir(parents=True, exist_ok=True)
+        except PermissionError: log.info('Unable to create system typedef directory, must be run as root to do so')
+
+    if not paths.userTypedefs.exists():
+        log.info('Creating system typedef directory')
+        paths.userTypedefs.mkdir(parents=True, exist_ok=True)
+
     if not paths.config.exists():
-        log.info('Config file not found, creating it now')
+        log.info('Creating config file')
         paths.config.touch()
         writeConfig(paths.config, defaultConfig)
 
     if not paths.repositories.exists():
-        log.info('Repository directory not found, creating it now')
+        log.info('Creating repository directory')
         paths.repositories.mkdir(parents=True, exist_ok=True)
 
 
