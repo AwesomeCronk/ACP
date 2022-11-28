@@ -1,5 +1,5 @@
 {
-    name: 'program',
+    name: 'lib_python',
     type: 'package_typedef',
     latest: 'all',
     latest_stable: 'all',
@@ -11,20 +11,21 @@
             stable: false,
             platforms:
             {
-                x86_64:
+                any:
                 {
                     Linux:
                     {
                         files:
                         [
-                            {path: '/usr/local/bin/_acp', source: 'system', action: 'ensure'},
-                            {path: '~/.local/bin/_acp', source: 'user', action: 'ensure'}
+                            {path: '/usr/local/lib/acp/python', source: 'system', action: 'ensure'},
+                            {path: '~/.local/lib/acp/python', source: 'user', action: 'ensure'}
                         ],
                         links:
                         [
-                            {path: '/usr/local/bin', source: 'system', action: 'ensure'},
-                            {path: '~/.local/bin', source: 'user', action: 'ensure'}
-                        ]
+                            {path: '/usr/local/lib/acp/python/_links', source: 'system', action: 'ensure; modvars PYTHONPATH'},
+                            {path: '~/.local/lib/acp/python/_links', source: 'user', action: 'ensure; modvaru PYTHONPATH'}
+                        ],
+                        version_separator: '_'
                     },
                     
                     Windows:
@@ -36,9 +37,10 @@
                         ],
                         links:
                         [
-                            {path: 'C:\\Program Files\\ACP\\links', source: 'system', action: 'ensure; modvar PATH'},
-                            {path: '%LOCALAPPDATA%\\Programs\\ACP\\links', source: 'user', action: 'ensure; modvar PATH'}
-                        ]
+                            {path: 'C:\\Program Files\\ACP\\links', source: 'system', action: 'ensure; modvars PATH'},
+                            {path: '%LOCALAPPDATA%\\Programs\\ACP\\links', source: 'user', action: 'ensure; modvaru PATH'}
+                        ],
+                        version_separator: '_'
                     }
                 }
             }

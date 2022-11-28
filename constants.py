@@ -13,6 +13,7 @@ platform.arch = plt.uname().machine
 class _paths: pass
 paths = _paths()
 
+# OS-specific stuff
 if platform.os == 'Linux':
     # Data paths
     paths.systemData = pathlib.Path('/etc/acp')

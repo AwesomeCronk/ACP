@@ -73,8 +73,11 @@ def install(args, config):
     log.addHandler(logFileHandler)
     log.info('Attempting to install {} version {} on {} ({})'.format(args.package, args.version, platform.os, platform.arch))
 
+    _7zip = None
+
     # Fetch package data
     packageData, packageFilePath = loadPackageData(args.package)
+    # Load system typedefs and then optionally user typedefs
     packageTypedefs = loadPackageTypedefs('system')
     if not args.system: packageTypedefs.update(loadPackageTypedefs('user'))
     log.debug('Available package typedefs: {}'.format(', '.join(list(packageTypedefs.keys()))))
@@ -151,19 +154,33 @@ def install(args, config):
         fileDir = packageTypedefs[packageData['type']]['files']['system' if args.system else 'user']
         fileDir = fileDir.joinpath(packageData['name']).joinpath(versionToInstall)
         linkDir = packageTypedefs[packageData['type']]['links']['system' if args.system else 'user']
-        
+        versionTag = ('.' + versionToInstall).replace('.', packageTypedefs[packageData['type']]['version_separator'])
+
+        # Remove previous installation (same version only)
         if fileDir.is_dir():
             log.info('Detected previous installation, removing it')
             shutil.rmtree(fileDir)
             for link in links:
-                linkDir.joinpath(link['name']).unlink()
+                try: linkDir.joinpath(link['name'] + versionTag).unlink()
+                except: pass
+                try: linkDir.joinpath(link['name']).unlink()
+                except: pass
         ensureDirExists(fileDir)
 
         def _processFile(file, isLink=False):
+            nonlocal _7zip
+
             if isLink:
+                # Create a symlink
                 link = file
-                linkPath = linkDir.joinpath(link['name'])
+
+                linkPath = linkDir.joinpath(link['name'] + versionTag)
                 targetPath = fileDir.joinpath(link['target'])
+                log.info('Linking {} to {}'.format(linkPath, targetPath))
+                linkPath.symlink_to(targetPath)
+
+                linkPath = linkDir.joinpath(link['name'])
+                targetPath = linkDir.joinpath(link['name'] + versionTag)
                 log.info('Linking {} to {}'.format(linkPath, targetPath))
                 linkPath.symlink_to(targetPath)
 
@@ -172,6 +189,7 @@ def install(args, config):
                     if action.strip() == '': continue
                     command, *args = action.strip().split()
 
+                    # Write a file
                     if command == 'write':
                         filePath = fileDir.joinpath(file['path'])
                         log.info('Writing {}'.format(filePath))
@@ -184,9 +202,10 @@ def install(args, config):
                             except ValueError:
                                 log.warning('Specified permissions invalid, did not set permissions')
                     
+                    # Extract a .7z archive
                     elif command == '7zip':
                         log.info('!Extracting 7zip archive')
-                        _7zip = getDependency('7z', log)
+                        if _7zip is None: _7zip = getDependency('7z', log)
                         if _7zip is None: sys.exit(1)
                         ensureDirExists(paths.temp, log)
                         archivePath = paths.temp.joinpath('archive.7z')

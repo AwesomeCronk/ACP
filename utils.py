@@ -16,7 +16,18 @@ except FileNotFoundError:
     print('Proper log file not available, writing log to {}'.format(altLogPath))
 logFileHandler.setLevel(logging.DEBUG)
 
-logFormatter = logging.Formatter('%(levelname)8s %(name)s || %(message)s')
+class colorFormatter(logging.Formatter):
+    def __init__(self, *args, **kwargs):
+        logging.Formatter.__init__(self, *args, **kwargs)
+
+    def format(self, record):
+        baseStr = logging.Formatter.format(self, record)
+        colorStr = 'COLOR - ' + baseStr
+
+        return colorStr
+        
+
+logFormatter = colorFormatter('%(levelname)8s %(name)s || %(message)s')
 logStreamHandler.setFormatter(logFormatter)
 logFileHandler.setFormatter(logFormatter)
 
@@ -132,7 +143,8 @@ def loadPackageTypedefs(context):
             {
                 'system': paths.systemData.joinpath('_package_typedefs/_links'),
                 'user': paths.userData.joinpath('_package_typedefs/_links')
-            }
+            },
+            'version_separator': ''
         }
     }
 
@@ -148,7 +160,7 @@ def loadPackageTypedefs(context):
             
             # Name and type checks
             if typedef['name'] == 'package_typedef':
-                log.warning('skipping typedef {}, refuse to override core "package_typedef"'.format(typedef['name'])); continue
+                log.warning('skipping typedef {}, refuse to override core package_typedef'.format(typedef['name'])); continue
             if typedef['type'] != 'package_typedef':
                 log.warning('skipping typedef {}, is not of type package_typedef'.format(typedef['name'])); continue
             
@@ -176,12 +188,14 @@ def loadPackageTypedefs(context):
             # Compile the typedef
             compiledTypedef = {
                 'files': {},
-                'links': {}
+                'links': {},
+                'version_separator': ''
             }
             for file in typedefInstallData['files']:
                 compiledTypedef['files'] = {file['source']: pathlib.Path(file['path']).expanduser().resolve()}
             for link in typedefInstallData['links']:
                 compiledTypedef['links'] = {link['source']: pathlib.Path(link['path']).expanduser().resolve()}
+            compiledTypedef['version_separator'] = typedefInstallData['version_separator']
 
             typedefs[typedef['name']] = compiledTypedef
 
