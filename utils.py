@@ -1,6 +1,8 @@
 import logging, pathlib, shutil, subprocess, shlex, sys, requests
 
 import json5
+import simpleANSI as ansi
+from simpleANSI.graphics import setGraphicsMode
 
 from constants import paths, platform
 
@@ -22,14 +24,22 @@ class colorFormatter(logging.Formatter):
 
     def format(self, record):
         baseStr = logging.Formatter.format(self, record)
-        colorStr = 'COLOR - ' + baseStr
+        colors = {
+            'DEBUG': setGraphicsMode(ansi.graphics.fgCyan),
+            'WARNING': setGraphicsMode(ansi.graphics.fgYellow),
+            'ERROR': setGraphicsMode(ansi.graphics.fgRed),
+            'CRITICAL': setGraphicsMode(ansi.graphics.fgMagenta)
+        }
+        level = baseStr.strip().split()[0]
+        colorStr = (colors[level] if level in colors.keys() else '') + baseStr + setGraphicsMode(ansi.graphics.normal)
 
         return colorStr
         
 
-logFormatter = colorFormatter('%(levelname)8s %(name)s || %(message)s')
-logStreamHandler.setFormatter(logFormatter)
-logFileHandler.setFormatter(logFormatter)
+logBasicFormatter = logging.Formatter('%(levelname)8s %(name)s || %(message)s')
+logColorFormatter = colorFormatter('%(levelname)8s %(name)s || %(message)s')
+logStreamHandler.setFormatter(logColorFormatter)
+logFileHandler.setFormatter(logBasicFormatter)
 
 loadingLog = logging.getLogger('loading')
 loadingLog.setLevel(logging.DEBUG)
