@@ -3,7 +3,7 @@ from datetime import datetime
 
 from constants import *
 from utils import *
-from commands import *
+from commands import commands
 
 
 def getArgs(argv):
@@ -20,7 +20,7 @@ def getArgs(argv):
     subParsers.required = True
     
     infoParser = subParsers.add_parser('info', help='Fetch info on a package')
-    infoParser.set_defaults(function=info)
+    infoParser.set_defaults(function=commands['info'])
     infoParser.add_argument(
         'package',
         help='package for which to fetch info',
@@ -35,7 +35,7 @@ def getArgs(argv):
     )
 
     add_repoParser = subParsers.add_parser('add-repo', help='Add package repositories')
-    add_repoParser.set_defaults(function=add_repo)
+    add_repoParser.set_defaults(function=commands['add-repo'])
     add_repoParser.add_argument(
         'repository',
         help='repository to add',
@@ -43,7 +43,7 @@ def getArgs(argv):
     )
 
     update_reposParser = subParsers.add_parser('update-repos', help='Update installed package repositories')
-    update_reposParser.set_defaults(function=update_repos)
+    update_reposParser.set_defaults(function=commands['update-repos'])
     update_reposParser.add_argument(
         '-r',
         '--repository',
@@ -53,7 +53,7 @@ def getArgs(argv):
     )
 
     docsParser = subParsers.add_parser('docs', help='Get documentation for topics relating to ACP')
-    docsParser.set_defaults(function=docs)
+    docsParser.set_defaults(function=commands['docs'])
     docsParser.add_argument(
         'topic',
         help='topic to search for',
@@ -61,7 +61,7 @@ def getArgs(argv):
     )
 
     installParser = subParsers.add_parser('install', help='Install a package')
-    installParser.set_defaults(function=install)
+    installParser.set_defaults(function=commands['install'])
     installParser.add_argument(
         'package',
         help='package to install',

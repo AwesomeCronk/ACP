@@ -1,72 +1,10 @@
-import logging, os, shutil
+import logging, os
 
 from constants import logNameLen
 from utils import *
 
 
-def info(args, config):
-    log = logging.getLogger('info')
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logStreamHandler)
-    log.addHandler(logFileHandler)
-
-    data = loadPackageData(args.package)
-    output = '\n'.join([
-        'Information for {}:'.format(data['name']),
-        'Type: {}'.format(data['type']),
-        'Latest release: {}'.format(data['latest']),
-        'Latest stable release: {}'.format(data['latest_stable']),
-        'Releases:'
-    ])
-
-    # It's messy but it works. Don't look too close.
-    for release in data['releases'].keys():
-        if args.version == release or args.version == '<all>':
-            output += '\n* {}'.format(release)
-            output += '\n  * Release notes: {}'.format(data['releases'][release]['release_notes'])
-            output += '\n  * Stable: {}'.format('yes' if data['releases'][release]['stable'] else 'no')
-            output += '\n  * Platforms:'
-            for platform in data['releases'][release]['platforms'].keys():
-                output += '\n    * {} ({})'.format(platform, ', '.join([os for os in data['releases'][release]['platforms'][platform].keys()]))
-
-    print(output)
-
-def add_repo(args, config):
-    log = logging.getLogger('add-repo')
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logStreamHandler)
-    log.addHandler(logFileHandler)
-    git = getDependency('git', log)
-    if git is None: exit(1)
-    os.chdir(paths.repositories)
-    gitOutput = exec(git, 'clone {}'.format(args.repository))  # git clone <args.repository>
-    log.debug(gitOutput.decode())
-
-    # git clone new repository
-    # confirm that it meets requirements
-    # remove it if not
-
-def update_repos(args, config):
-    log = logging.getLogger('update-repo')
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logStreamHandler)
-    log.addHandler(logFileHandler)
-    git = getDependency('git', log)
-    if args.repository == '<all>':
-        log.error('Well you can\'t update all of them at once *yet* ¯\_(ツ)_/¯'); sys.exit(1)
-    os.chdir(paths.repositories.joinpath(args.repository))
-    gitOutput = exec(git, 'pull origin master')
-    log.debug(gitOutput.decode())
-
-def docs(args, config):
-    log = logging.getLogger('docs')
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logStreamHandler)
-    log.addHandler(logFileHandler)
-    log.debug('Fetching docs for {}...'.format(args.topic))
-    print('Listing documentation for {}:'.format(args.topic))
-
-def install(args, config):
+def command_install(args, config):
     log = logging.getLogger('install'.ljust(logNameLen))
     log.setLevel(logging.DEBUG)
     log.addHandler(logStreamHandler)
