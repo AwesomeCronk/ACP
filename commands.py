@@ -73,8 +73,6 @@ def install(args, config):
     log.addHandler(logFileHandler)
     log.info('Attempting to install {} version {} on {} ({})'.format(args.package, args.version, platform.os, platform.arch))
 
-    _7zip = None
-
     # Fetch package data
     packageData, packageFilePath = loadPackageData(args.package)
     # Load system typedefs and then optionally user typedefs
@@ -117,31 +115,15 @@ def install(args, config):
     if packageData['type'] == 'package_typedef':
         sourcePath = packageFilePath
 
-        def _processFile(file, isLink=False):
-            log.debug('Processing {} (action: {})'.format(file['path'], file['action']))
-            for action in file['action'].split(';'):
-                if action.strip() == '': continue
-                command, *args = action.strip().split()
-
-                if command == 'ensure':
-                    log.debug('Ensuring existence')
-                    ensureDirExists(pathlib.Path(file['path']))
-
-                elif command == 'modvars':
-                    log.debug('!Modifying system environment variable {}'.format(args[0]))
-
-                elif command == 'modvaru':
-                    log.debug('!Modifying user environment variable {}'.format(args[0]))
-
         log.info('Installing typedef for {}'.format('whole system' if args.system else os.getlogin()))
         targetPath = (paths.systemData if args.system else paths.userTypedefs).joinpath(packageFilePath.name)
 
         for file in files:
             if file['source'] == ('system' if args.system else 'user'):
-                _processFile(file)
+                processTypedefFile(file, log)
         for link in links:
             if link['source'] == ('system' if args.system else 'user'):
-                _processFile(link, True)
+                processTypedefFile(link, log)
                 
         # Make a copy of the typedef file to be available for installing packages later
         log.debug('Copying {} to {}'.format(sourcePath, targetPath))
@@ -157,70 +139,30 @@ def install(args, config):
         versionTag = ('.' + versionToInstall).replace('.', packageTypedefs[packageData['type']]['version_separator'])
 
         # Remove previous installation (same version only)
-        if fileDir.is_dir():
-            log.info('Detected previous installation, removing it')
+        try:
             shutil.rmtree(fileDir)
-            for link in links:
-                try: linkDir.joinpath(link['name'] + versionTag).unlink()
-                except: pass
-                try: linkDir.joinpath(link['name']).unlink()
-                except: pass
+            log.debug('Deleted previous identical installation')
+        except: pass
+        for link in links:
+            try: linkDir.joinpath(link['name'] + versionTag).unlink()
+            except: pass
+            try: linkDir.joinpath(link['name']).unlink()
+            except: pass
         ensureDirExists(fileDir)
 
-        def _processFile(file, isLink=False):
-            nonlocal _7zip
-
-            if isLink:
-                # Create a symlink
-                link = file
-
-                linkPath = linkDir.joinpath(link['name'] + versionTag)
-                targetPath = fileDir.joinpath(link['target'])
-                log.info('Linking {} to {}'.format(linkPath, targetPath))
-                linkPath.symlink_to(targetPath)
-
-                linkPath = linkDir.joinpath(link['name'])
-                targetPath = linkDir.joinpath(link['name'] + versionTag)
-                log.info('Linking {} to {}'.format(linkPath, targetPath))
-                linkPath.symlink_to(targetPath)
-
-            else:
-                for action in file['action'].split(';'):
-                    if action.strip() == '': continue
-                    command, *args = action.strip().split()
-
-                    # Write a file
-                    if command == 'write':
-                        filePath = fileDir.joinpath(file['path'])
-                        log.info('Writing {}'.format(filePath))
-                        with open(filePath, 'wb') as destFile:
-                            destFile.write(readSource(file['source'], log))
-                        if len(args):
-                            try:
-                                log.info('Setting permissions to {}'.format(args[0]))
-                                filePath.chmod(int('0o' + args[0], base=8))
-                            except ValueError:
-                                log.warning('Specified permissions invalid, did not set permissions')
-                    
-                    # Extract a .7z archive
-                    elif command == '7zip':
-                        log.info('!Extracting 7zip archive')
-                        if _7zip is None: _7zip = getDependency('7z', log)
-                        if _7zip is None: sys.exit(1)
-                        ensureDirExists(paths.temp, log)
-                        archivePath = paths.temp.joinpath('archive.7z')
-                        with open(archivePath, 'wb') as archiveFile:
-                            archiveFile.write(readSource(file['source'], log))
-                        _7zipArgs = 'x -o{} {}'.format(file['path'], archivePath)
-                        log.debug(_7zipArgs)
-                        exec(_7zip, _7zipArgs)
-
-
         for file in files:
-            _processFile(file)
-        
+            processPackageFile(file, fileDir, log)
+
         for link in links:
-            _processFile(link, True)
+            linkPath = linkDir.joinpath(link['name'] + versionTag)
+            targetPath = fileDir.joinpath(link['target'])
+            log.info('Linking {} to {}'.format(linkPath, targetPath))
+            linkPath.symlink_to(targetPath)
+
+            linkPath = linkDir.joinpath(link['name'])
+            targetPath = linkDir.joinpath(link['name'] + versionTag)
+            log.info('Linking {} to {}'.format(linkPath, targetPath))
+            linkPath.symlink_to(targetPath)
 
         print('Installed {}'.format(args.package))
 
