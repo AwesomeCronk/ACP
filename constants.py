@@ -22,7 +22,7 @@ if platform.os == 'Linux':
     
     # Configuration and runtime stuff
     paths.log = paths.userData.joinpath('log.txt')
-    paths.config = paths.userData.joinpath('config.json')
+    paths.config = paths.userData.joinpath('config.json5')
     
     # Repository and typedef storage
     paths.repositories = paths.userData.joinpath('repositories')
@@ -34,7 +34,7 @@ elif platform.os == 'Windows':
 else:
     raise RuntimeError('Platform "{}" is unrecognized and unsupported.'.format(platform))
 
-paths.forbiddenCharacters = '<>:"/\\|?*' + ''.join([int.to_bytes(i, 1, 'big').decode('ascii') for i in range(32)])
+paths.forbiddenChars = '<>:"/\\|?*' + ''.join([int.to_bytes(i, 1, 'big').decode('ascii') for i in range(32)])
 
 
 # URLs
@@ -59,5 +59,5 @@ logLevels = {
 logNameLen = 8
 
 defaultConfig = {
-    'log-level': 'info'
+    'log-level': 'warning'
 }

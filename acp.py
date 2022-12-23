@@ -81,16 +81,25 @@ def getArgs(argv):
         action='store_true'
     )
 
+    pathsParser = subParsers.add_parser('paths', help='List all paths used by ACP itself')
+    pathsParser.set_defaults(function = commands['paths'])
+
     return rootParser.parse_args(argv)
 
 
 if __name__ == '__main__':
+    # Ensure that Python >= 3.9
+    pythonVersion = sys.version_info
+    if not (pythonVersion.major == 3 and pythonVersion.minor >= 9):
+        print('ACP requires Python 3.9 or higher')
+        sys.exit(1)
+
     args = getArgs(sys.argv[1:])
     log = logging.getLogger('__main__')
     log.setLevel(logging.DEBUG)
     log.addHandler(logStreamHandler)
     log.addHandler(logFileHandler)
-    log.debug('=========={}=========='.format(datetime.now().strftime('%Y-%m-%d %H:%M')))
+    # log.debug('=========={}=========='.format(datetime.now().strftime('%Y-%m-%d %H:%M')))
 
 
     # Make sure the environment is set up ok
@@ -109,7 +118,7 @@ if __name__ == '__main__':
         except PermissionError: log.info('Unable to create system typedef directory, must be run as root to do so')
 
     if not paths.userTypedefs.exists():
-        log.info('Creating system typedef directory')
+        log.info('Creating user typedef directory')
         paths.userTypedefs.mkdir(parents=True, exist_ok=True)
 
     if not paths.config.exists():

@@ -9,7 +9,7 @@ def command_install(args, config):
     log.setLevel(logging.DEBUG)
     log.addHandler(logStreamHandler)
     log.addHandler(logFileHandler)
-    log.info('Attempting to install {} version {} on {} ({})'.format(args.package, args.version, platform.os, platform.arch))
+    log.info('Installing {} version {} on {} ({})'.format(args.package, args.version, platform.os, platform.arch))
 
     # Fetch package data
     packageData, packageFilePath = loadPackageData(args.package)

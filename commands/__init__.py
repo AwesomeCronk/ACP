@@ -8,5 +8,6 @@ commands = {
     'add-repo': command_add_repo,
     'update-repos': command_update_repos,
     'info': command_info,
-    'docs': command_docs
+    'docs': command_docs,
+    'paths': command_paths
 }
