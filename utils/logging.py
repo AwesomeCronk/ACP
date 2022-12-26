@@ -3,7 +3,7 @@ import logging, pathlib
 import simpleANSI as ansi
 from simpleANSI.graphics import setGraphicsMode
 
-from constants import paths
+from constants import logNameLen, paths
 
 
 streamHandler = logging.StreamHandler()
@@ -39,3 +39,11 @@ basicFormatter = logging.Formatter(format)
 colorFormatter = _colorFormatter(format)
 streamHandler.setFormatter(colorFormatter)
 fileHandler.setFormatter(basicFormatter)
+
+
+def create(name):
+    log = logging.getLogger(name.ljust(logNameLen))
+    log.setLevel(logging.DEBUG)
+    log.addHandler(streamHandler)
+    log.addHandler(fileHandler)
+    return log

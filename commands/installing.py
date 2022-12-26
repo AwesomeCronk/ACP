@@ -1,21 +1,18 @@
-import logging, os
+import os, shutil, sys
 
-from constants import logNameLen
-from utils import *
+from constants import paths, platform
+import utils
 
 
 def command_install(args, config):
-    log = logging.getLogger('install'.ljust(logNameLen))
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logStreamHandler)
-    log.addHandler(logFileHandler)
+    log = utils.logging.create('install')
     log.info('Installing {} version {} on {} ({})'.format(args.package, args.version, platform.os, platform.arch))
 
     # Fetch package data
-    packageData, packageFilePath = loadPackageData(args.package)
+    packageData, packageFilePath = utils.packages.loadData(args.package)
     # Load system typedefs and then optionally user typedefs
-    packageTypedefs = loadPackageTypedefs('system')
-    if not args.system: packageTypedefs.update(loadPackageTypedefs('user'))
+    packageTypedefs = utils.packages.loadTypedefs('system')
+    if not args.system: packageTypedefs.update(utils.packages.loadTypedefs('user'))
     log.debug('Available package typedefs: {}'.format(', '.join(list(packageTypedefs.keys()))))
 
     # Version picking
@@ -58,10 +55,10 @@ def command_install(args, config):
 
         for file in files:
             if file['source'] == ('system' if args.system else 'user'):
-                processTypedefFile(file, log)
+                utils.filesys.processTypedefFile(file, log)
         for link in links:
             if link['source'] == ('system' if args.system else 'user'):
-                processTypedefFile(link, log)
+                utils.filesys.processTypedefFile(link, log)
                 
         # Make a copy of the typedef file to be available for installing packages later
         log.debug('Copying {} to {}'.format(sourcePath, targetPath))
@@ -86,10 +83,10 @@ def command_install(args, config):
             except: pass
             try: linkDir.joinpath(link['name']).unlink()
             except: pass
-        ensureDirExists(fileDir)
+        utils.filesys.ensureDirExists(fileDir)
 
         for file in files:
-            processPackageFile(file, fileDir, log)
+            utils.filesys.processPackageFile(file, fileDir, log)
 
         for link in links:
             linkPath = linkDir.joinpath(link['name'] + versionTag)

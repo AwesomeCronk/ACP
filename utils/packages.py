@@ -22,7 +22,7 @@ def getURLType(url: str):
 
 
 # Package loading
-def readData(packageName, log):
+def loadData(packageName, log):
     urlType = getURLType(packageName)
     log.debug('URL type: {}'.format(urlType))
     

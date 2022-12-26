@@ -1,20 +1,15 @@
-import logging
-
-from constants import logNameLen
-from utils import *
+from constants import paths
+import utils
 
 
 def command_info(args, config):
-    log = logging.getLogger('info'.ljust(logNameLen))
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logStreamHandler)
-    log.addHandler(logFileHandler)
+    log = utils.logging.create('info')
 
-    packageData, packageFilePath = loadPackageData(args.package)
-    packageTypedefs = loadPackageTypedefs('system')
-    packageTypedefs.update(loadPackageTypedefs('user'))
-    installedVersions = getInstalledVersions(packageData, packageTypedefs[packageData['type']], log)
-    activeVersion = getActiveVersion(packageData, packageTypedefs[packageData['type']], installedVersions, log)
+    packageData, packageFilePath = utils.packages.loadData(args.package)
+    packageTypedefs = utils.packages.loadTypedefs('system')
+    packageTypedefs.update(utils.packages.loadTypedefs('user'))
+    installedVersions = utils.packages.getInstalledVersions(packageData, packageTypedefs[packageData['type']], log)
+    activeVersion = utils.packages.getActiveVersion(packageData, packageTypedefs[packageData['type']], installedVersions, log)
 
     output = '\n'.join([
         'Information for {}:'.format(packageData['name']),
@@ -25,14 +20,12 @@ def command_info(args, config):
         'Releases:'
     ])
 
-    # It's messy but it works. Don't look too close.
+    # Build output string before printing
     for release in packageData['releases'].keys():
         if args.version == release or args.version == '<all>':
-            output += '\n* {}{}{}'.format(
-                release,
-                ' (stable)' if packageData['releases'][release]['stable'] else '',
-                ' (installed)' if release in installedVersions else ''
-            )
+            output += '\n* {}'.format(release)
+            if packageData['releases'][release]['stable']: output += ' (stable)'
+            if release in installedVersions: output += ' (installed)'
             output += '\n  Release notes: {}'.format(packageData['releases'][release]['release_notes'])
             output += '\n  Platforms:'
             for platform in packageData['releases'][release]['platforms'].keys():
@@ -41,18 +34,12 @@ def command_info(args, config):
     print(output)
 
 def command_docs(args, config):
-    log = logging.getLogger('docs'.ljust(logNameLen))
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logStreamHandler)
-    log.addHandler(logFileHandler)
+    log = utils.logging.create('docs')
     log.debug('Fetching docs for {}...'.format(args.topic))
     print('Listing documentation for {}:'.format(args.topic))
 
 def command_paths(args, config):
-    log = logging.getLogger('paths'.ljust(logNameLen))
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logStreamHandler)
-    log.addHandler(logFileHandler)
+    # log = utils.logging.create('paths')
     for path in dir(paths):
-        if path[0:2] != '__' and path != 'forbiddenCharacters':
+        if path[0:2] != '__' and path != 'forbiddenChars':
             print('{}: {}'.format(path, getattr(paths, path)))

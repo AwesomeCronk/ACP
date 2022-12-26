@@ -2,8 +2,8 @@ import argparse, logging, sys
 from datetime import datetime
 
 from constants import *
-from utils import *
 from commands import commands
+import utils
 
 
 def getArgs(argv):
@@ -95,10 +95,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     args = getArgs(sys.argv[1:])
-    log = logging.getLogger('__main__')
-    log.setLevel(logging.DEBUG)
-    log.addHandler(logStreamHandler)
-    log.addHandler(logFileHandler)
+    log = utils.logging.create('__main__')
     # log.debug('=========={}=========='.format(datetime.now().strftime('%Y-%m-%d %H:%M')))
 
 
@@ -124,23 +121,23 @@ if __name__ == '__main__':
     if not paths.config.exists():
         log.info('Creating config file')
         paths.config.touch()
-        writeConfig(paths.config, defaultConfig)
+        utils.logging.write(paths.config, defaultConfig)
 
     if not paths.repositories.exists():
         log.info('Creating repository directory')
         paths.repositories.mkdir(parents=True, exist_ok=True)
 
 
-    config = readConfig(paths.config)
+    config = utils.config.read(paths.config)
 
     if args.log_level == 'config':
         if config['log-level'] in logLevels.keys():
-            logStreamHandler.setLevel(logLevels[config['log-level']])
-        else: log.error('Invalid log level "{}" from configuration'.format(config['log-level'])); sys.exit(1)
+            utils.logging.streamHandler.setLevel(logLevels[config['log-level']])
+        else: log.error('Invalid log level "{}" in config'.format(config['log-level'])); sys.exit(1)
 
     else:
         if args.log_level in logLevels.keys():
-            logStreamHandler.setLevel(logLevels[args.log_level])
+            utils.logging.streamHandler.setLevel(logLevels[args.log_level])
         else: log.error('Invalid log level "{}"'.format(args.log_level)); sys.exit(1)
 
     args.function(args, config)
