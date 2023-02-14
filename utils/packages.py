@@ -1,11 +1,11 @@
 import pathlib, sys
 
-import json5
+import json5, requests
 
 from constants import paths, platform
 
 
-# URLs
+# Sources
 def getURLType(url: str):
     # ./package.acp || /home/user/Downloads/package.acp
     if url[0] in ('.', '/', '~'):    # Going to need changed for Windows support
@@ -16,9 +16,31 @@ def getURLType(url: str):
     # repository/package
     elif url.count('/') == 1:
         return 'repo/name'
+    elif url[0:8] == 'https://' or url[0:7] == 'http://':
+        return 'web'
     # Any other mess that may be put in
     else:
         return 'unknown'
+
+def readSource(url, log):
+    urlType = getURLType(url)
+    if urlType == 'web':
+        try:
+            resp = requests.get(url)
+        except requests.exceptions.ConnectionError:
+            log.error('Unable to connect to remote host ({})'.format(url)); sys.exit(1)
+        if resp.ok == False:
+            log.error('Request failed, code {} ({})'.format(resp.status_code, url)); sys.exit(1)
+        data = resp.content
+    
+    else:
+        try:
+            with open(url, 'rb') as file:
+                data = file.read()
+        except FileNotFoundError:
+            log.error('File not found ({})'.format(url)); sys.exit(1)
+    
+    return data
 
 
 # Package loading
@@ -110,7 +132,7 @@ def loadTypedefs(context, log):
             if platform.arch in typedefPlatforms.keys():
                 typdedefOSes = typedefPlatforms[platform.arch]
             elif 'any' in typedefPlatforms.keys():
-                typdedefOSes = typedefPlatforms[platform.arch]
+                typdedefOSes = typedefPlatforms['any']
             else:
                 log.debug('skipping typedef {}, lacks definition for {}'.format(typedef['name'], platform.arch)); continue
             

@@ -40,7 +40,7 @@ paths.forbiddenChars = '<>:"/\\|?*' + ''.join([int.to_bytes(i, 1, 'big').decode(
 # URLs
 class _urls: pass
 urls = _urls()
-urls.docsRoot ='https://raw.githubusercontent.com/AwesomeCronk/ACP/master/docs/'   # Base url to fetch documentation
+urls.docsRoot ='https://github.com/AwesomeCronk/ACP/tree/master/docs'   # Base url to fetch documentation
 
 
 # Errors
@@ -55,8 +55,6 @@ logLevels = {
     'error': logging.ERROR,
     'critical': logging.CRITICAL
 }
-
-logNameLen = 8
 
 defaultConfig = {
     'log-level': 'warning'

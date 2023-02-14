@@ -3,7 +3,7 @@ import logging, pathlib
 import simpleANSI as ansi
 from simpleANSI.graphics import setGraphicsMode
 
-from constants import logNameLen, paths
+from constants import paths
 
 
 streamHandler = logging.StreamHandler()
@@ -23,18 +23,18 @@ class _colorFormatter(logging.Formatter):
     def format(self, record):
         baseStr = logging.Formatter.format(self, record)
         colors = {
-            'DEBUG': setGraphicsMode(ansi.graphics.fgCyan),
+            'DEBUG': setGraphicsMode(ansi.graphics.fgBlue),
+            'INFO': setGraphicsMode(ansi.graphics.normal),
             'WARNING': setGraphicsMode(ansi.graphics.fgYellow),
             'ERROR': setGraphicsMode(ansi.graphics.fgRed),
-            'CRITICAL': setGraphicsMode(ansi.graphics.fgMagenta),
-            'normal': setGraphicsMode(ansi.graphics.normal)
+            'CRITICAL': setGraphicsMode(ansi.graphics.fgMagenta)
         }
-        level = baseStr.strip().split()[0]
-        colorStr = (colors[level] if level in colors.keys() else colors['normal']) + baseStr + colors['normal']
-
-        return colorStr
+        for level in colors.keys():
+            if level in baseStr:
+                return colors[level] + baseStr + colors['INFO']
+        return baseStr
         
-format = '%(levelname)-8s %(name)s %(message)s'
+format = '%(name)s:%(levelname)s: %(message)s'
 basicFormatter = logging.Formatter(format)
 colorFormatter = _colorFormatter(format)
 streamHandler.setFormatter(colorFormatter)
@@ -42,7 +42,7 @@ fileHandler.setFormatter(basicFormatter)
 
 
 def create(name):
-    log = logging.getLogger(name.ljust(logNameLen))
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG)
     log.addHandler(streamHandler)
     log.addHandler(fileHandler)
