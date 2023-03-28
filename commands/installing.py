@@ -13,23 +13,8 @@ def command_install(args, config):
     packageData, packageFilePath = utils.packages.loadData(args.package, log)
     
     # Identify desired version
-    if args.version == 'latest_stable':
-        if not packageData['latest_stable'] is None:
-            versionToInstall = packageData['latest_stable']
-        else:
-            log.error('No latest_stable version defined in this package.'); sys.exit(1)
-
-    elif args.version == 'latest':
-        if not packageData['latest'] is None:
-            versionToInstall = packageData['latest']
-        else:
-            log.error('No latest version defined in this package.'); sys.exit(1)
-
-    elif args.version in packageData['releases']:
-        versionToInstall = args.version
-
-    else: log.error('Package "{}" has no version "{}".'.format(args.package, args.version)); sys.exit(1)
-
+    versionToInstall = utils.packages.getExistingVersion(args.version, packageData, log)
+    
     # Pick compatible platform
     platforms = packageData['releases'][versionToInstall]['platforms']
     archs = platforms.keys()

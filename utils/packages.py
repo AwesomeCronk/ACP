@@ -187,3 +187,22 @@ def getActiveVersion(packageData, packageTypedef, installedVersions, log):
         if packageName + versionTag == activeLink.name:
             return version
     return None
+
+
+# Get the requested version if it exists in the package
+def getExistingVersion(version, packageData, log):
+    if version == 'latest_stable':
+        if packageData['latest_stable'] is None:
+            log.error('No latest_stable version defined in this package.'); sys.exit(1)
+        return packageData['latest_stable']
+
+    elif version == 'latest':
+        if packageData['latest'] is None:
+            log.error('No latest version defined in this package.'); sys.exit(1)
+        return packageData['latest']
+
+    elif version in packageData['releases']:
+        return version
+
+    else: log.error('This package has no version "{}".'.format(version)); sys.exit(1)
+
