@@ -21,20 +21,20 @@ Any printouts prefixed with `!` indicate that ACP is skimming over unimplemented
 ### install
 
 1. Fetch package data (from file or repository)
-2. Pick compatible version/platform
-3. If already installed, skip unless --reinstall argument
+2. If from file, copy the file to sourcefiles repository
+3. Pick compatible version/platform
+4. If already installed, skip unless --reinstall argument
 
 For package typedefs:
 
-1. Process file and link directories (create dirs, set env vars)
-2. Save a copy in `paths.userTypedefs` or `paths.systemTypedefs`
+5. Process file and link directories (create dirs, set env vars)
+6. Save a copy in `paths.userTypedefs` or `paths.systemTypedefs`  (use package name, not file name)
 
 For regular packages:
 
-4. Save to catalog, mark "partially installed"
-5. Process files
-6. Set up links
-7. Save a copy of package file in `paths.userInstalledPackages` or `paths.systemInstalledPackages`
+5. Save to catalog, mark "partially installed"
+6. Process files
+7. Set up links
 8. Mark "installed" in catalog
 
 ### uninstall

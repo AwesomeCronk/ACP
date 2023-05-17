@@ -7,12 +7,12 @@ import utils
 class UnknownPackageTypeError(Exception): pass
 
 
-def installTypedef(caller, source, sourcePath, version, arch, os, system):
+def installTypedef(caller, source, sourcePath, version, platform, system):
     log = utils.logging.create('installTypedef')
     log.info('Installing typedef for {}'.format('whole system' if system else 'current user'))
 
-    files = source['releases'][version]['platforms'][arch][os]['files']
-    links = source['releases'][version]['platforms'][arch][os]['links']
+    files = source['releases'][version]['platforms'][platform.arch][platform.os]['files']
+    links = source['releases'][version]['platforms'][platform.arch][platform.os]['links']
 
     for file in files:
         if file['source'] == ('system' if system else 'user'):
@@ -30,7 +30,7 @@ def installTypedef(caller, source, sourcePath, version, arch, os, system):
         with open(targetPath, 'wb') as targetFile:
             targetFile.write(sourceFile.read())
 
-def installPackage(caller, source, sourcePath, version, arch, os, system):
+def installPackage(caller, source, sourcePath, version, platform, system):
     log = utils.logging.create('installPackage')
     log.info('Installing package for {}'.format('whole system' if system else 'current user'))
     
@@ -48,8 +48,8 @@ def installPackage(caller, source, sourcePath, version, arch, os, system):
     fileDir = fileDir.joinpath(source['name']).joinpath(version)
     linkDir = packageTypedefs[source['type']]['links']['system' if system else 'user']
 
-    files = source['releases'][version]['platforms'][arch][os]['files']
-    links = source['releases'][version]['platforms'][arch][os]['links']
+    files = source['releases'][version]['platforms'][platform.arch][platform.os]['files']
+    links = source['releases'][version]['platforms'][platform.arch][platform.os]['links']
 
     # Remove previous installation (same version only)
     try:
@@ -75,9 +75,8 @@ def installPackage(caller, source, sourcePath, version, arch, os, system):
         targetPath = fileDir.joinpath(link['target'])
         log.info('Linking {} to {}'.format(linkPath, targetPath))
         linkPath.symlink_to(targetPath)
-    activatePackage(caller, source, sourcePath, version, arch, os, system)
 
-def activatePackage(caller, source, sourcePath, version, arch, os, system):
+def activatePackage(caller, source, sourcePath, version, platform, system):
     log = utils.logging.create('activatePackage')
     log.info('Activating package for {}'.format('whole system' if system else 'current user'))
 
@@ -90,7 +89,7 @@ def activatePackage(caller, source, sourcePath, version, arch, os, system):
 
     linkDir = packageTypedefs[source['type']]['links']['system' if system else 'user']
     
-    links = source['releases'][version]['platforms'][arch][os]['links']
+    links = source['releases'][version]['platforms'][platform.arch][platform.os]['links']
 
     for link in links:
         # Regular links

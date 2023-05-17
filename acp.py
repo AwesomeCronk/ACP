@@ -12,7 +12,7 @@ def getArgs(argv):
         '-l',
         '--log-level',
         help='importance level cutoff for logging',
-        type = str,
+        type=str,
         default='config'
     )
 
@@ -81,8 +81,8 @@ def getArgs(argv):
         action='store_true'
     )
 
-    pathsParser = subParsers.add_parser('paths', help='List all paths used by ACP itself')
-    pathsParser.set_defaults(function = commands['paths'])
+    pathsParser = subParsers.add_parser('paths', help='List all paths used by ACP')
+    pathsParser.set_defaults(function=commands['paths'])
 
     return rootParser.parse_args(argv)
 

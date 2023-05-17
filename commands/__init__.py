@@ -1,4 +1,4 @@
-from .installing import *
+from .packages import *
 from .repositories import *
 from .information import *
 

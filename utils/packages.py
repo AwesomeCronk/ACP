@@ -2,7 +2,7 @@ import pathlib, sys
 
 import json5, requests
 
-from constants import paths, platform
+from constants import paths, platform, _platform
 
 
 # Sources
@@ -206,3 +206,27 @@ def getExistingVersion(version, packageData, log):
 
     else: log.error('This package has no version "{}".'.format(version)); sys.exit(1)
 
+
+# Get a compatible platform identifier
+def getCompatiblePlatform(packageData, versionToInstall, log):
+    platforms = packageData['releases'][versionToInstall]['platforms']
+    archs = platforms.keys()
+    oses = []
+    
+    if platform.arch in archs:
+        oses = platforms[platform.arch]
+        arch = platform.arch
+    elif 'any' in archs:
+        oses = platforms['any']
+        arch = 'any'
+    else:
+        log.error('No install definition for {}'.format(platform.arch)); sys.exit(1)
+
+    if not platform.os in oses.keys():
+        log.error('No install definition for {}'.format(platform.os)); sys.exit(1)
+
+    compatiblePlatform = _platform()
+    compatiblePlatform.os = platform.os
+    compatiblePlatform.arch = arch
+
+    return compatiblePlatform
