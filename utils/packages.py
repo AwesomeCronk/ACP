@@ -58,26 +58,20 @@ def loadData(packageName, log):
         # Check specified repo for package, then fetch package data
         repo, name = packageName.split('/')
 
-        foundRepository = False
         for repositoryPath in paths.repositories.glob('*'):
             if repo == repositoryPath.name:
-                foundRepository = True
                 break
 
-        if foundRepository:
-            foundPackage = False
-            with open(repositoryPath.joinpath('_packages'), 'r') as packageListing:
-                for packageEntry in packageListing.readlines():
-                    packageName, packagePath = packageEntry.strip().split(': ')
-                    if name == packageName:
-                        foundPackage = True
-
-            if foundPackage:
-                packageFilePath = repositoryPath.joinpath(packagePath)
-
-            else: log.error('Repository "{}" has no entry for package "{}"'.format(repo, name)); sys.exit(1)
-
         else: log.error('Could not find repository "{}".'.format(repo)); sys.exit(1)
+    
+        for packageFilePath in repositoryPath.glob('*'):
+            if packageFilePath.name[-4:] == '.acp':
+                with open(packageFilePath, 'r') as packageFile:
+                    packageData = json5.loads(packageFile.read())
+
+                if packageData['name'] == name: break
+
+        else: log.error('Repository "{}" has no package "{}"'.format(repo, name)); sys.exit(1)
 
     elif urlType == 'file':
         # Read file to fetch package data
@@ -86,11 +80,8 @@ def loadData(packageName, log):
     else:
         log.error('Unable to resolve URL type for "{}"'.format(packageName)); sys.exit(1)
 
-    with open(packageFilePath, 'r') as packageFile:
-        packageData = packageFile.read()
 
-    # Parse package data
-    return json5.loads(packageData), packageFilePath
+    return packageData, packageFilePath
 
 def loadTypedefs(context, log):
     # Typedefs are handled in this structure during runtime, but stored as a standard .acp package

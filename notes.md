@@ -16,6 +16,10 @@ Any printouts prefixed with `!` indicate that ACP is skimming over unimplemented
   * repositories
   * catalog.json5
 
+## Repository file structure
+
+All files that end in `.acp` are processed as package files when searching a repository. The file name (minus the `.acp` at the end) must match the pakcage name it represents. Additional files may be present, such as `LICENSE` and `README.md`, but no file that should not be interpreted as a package file may have a name ending in `.acp`.
+
 ## Command execution sequence
 
 ### install

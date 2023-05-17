@@ -15,7 +15,7 @@ def command_install(args, config):
 
     # Copy to _sourcefiles repository
     if utils.packages.getURLType(args.package) == 'file':
-        newPackageFilePath = paths.repositories.joinpath('_sourcefiles/{}'.format(packageName))
+        newPackageFilePath = paths.repositories.joinpath('_sourcefiles/{}.acp'.format(packageName))
         shutil.copy(packageFilePath, newPackageFilePath)
         packageFilePath = newPackageFilePath
     

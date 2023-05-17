@@ -126,6 +126,7 @@ if __name__ == '__main__':
     if not paths.repositories.exists():
         log.info('Creating repository directory')
         paths.repositories.mkdir(parents=True, exist_ok=True)
+        paths.repositories.joinpath('_sourcefiles').mkdir(exist_ok=True)
 
 
     config = utils.config.read(paths.config)
