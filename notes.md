@@ -1,6 +1,14 @@
+## Code stuff
 For environment variables on linux, use /etc/environment or ~/.profile.
 
 Any printouts prefixed with `!` indicate that ACP is skimming over unimplemented functionality. Usually this is to help lay out program flow from the top down.
+
+### What each Python file does
+* `acp.py` is the main file; loads args, checks environment completeness, etc.
+* `constants.py` builds variables that stay constant throughout execution (paths, platform, lag levels, etc.)
+* `operations.py` contains operations (functions that do things to the system)
+* `commands/` contains commands (functions that execute commands like `install` or `add-repo`)
+* `utils/` contains utilities (functions that help commands or operations do something like load config, ensure files/dirs exist, create loggers, etc.)
 
 ## System file structure
 
@@ -18,9 +26,9 @@ Any printouts prefixed with `!` indicate that ACP is skimming over unimplemented
 
 ## Repository file structure
 
-All files that end in `.acp` are processed as package files when searching a repository. The file name (minus the `.acp` at the end) must match the pakcage name it represents. Additional files may be present, such as `LICENSE` and `README.md`, but no file that should not be interpreted as a package file may have a name ending in `.acp`.
+All files that end in `.acp` are processed as package files when searching a repository. The file name (minus the `.acp` at the end) should match the package name it represents. No two package files should use the same name, but if that occurs, the alphabetical first package file is used. Additional files may be present, such as `LICENSE` and `README.md`, but no file that should not be interpreted as a package file may have a name ending in `.acp`.
 
-## Command execution sequence
+## Command execution sequences
 
 ### install
 

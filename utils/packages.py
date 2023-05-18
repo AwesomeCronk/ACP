@@ -76,6 +76,8 @@ def loadData(packageName, log):
     elif urlType == 'file':
         # Read file to fetch package data
         packageFilePath = pathlib.Path(packageName).expanduser().resolve()
+        with open(packageFilePath, 'r') as packageFile:
+            packageData = json5.loads(packageFile.read())
 
     else:
         log.error('Unable to resolve URL type for "{}"'.format(packageName)); sys.exit(1)

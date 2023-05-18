@@ -13,16 +13,14 @@ def command_install(args, config):
     packageData, packageFilePath = utils.packages.loadData(args.package, log)
     packageName = packageData['name']
 
-    # Copy to _sourcefiles repository
+    # Copy to _sourcefiles repository if installing from a plain file
     if utils.packages.getURLType(args.package) == 'file':
         newPackageFilePath = paths.repositories.joinpath('_sourcefiles/{}.acp'.format(packageName))
         shutil.copy(packageFilePath, newPackageFilePath)
         packageFilePath = newPackageFilePath
     
-    # Identify desired version
+    # Identify desired version and pick compatible platform
     versionToInstall = utils.packages.getExistingVersion(args.version, packageData, log)
-    
-    # Pick compatible platform
     platformToUse = utils.packages.getCompatiblePlatform(packageData, versionToInstall, log)
 
     # Install
