@@ -28,9 +28,9 @@ def readSource(url, log):
         try:
             resp = requests.get(url)
         except requests.exceptions.ConnectionError:
-            log.error('Unable to connect to remote host ({})'.format(url)); sys.exit(1)
+            log.error('Unable to connect to {}'.format(url)); sys.exit(1)
         if resp.ok == False:
-            log.error('Request failed, code {} ({})'.format(resp.status_code, url)); sys.exit(1)
+            log.error('Request to {} failed, code {}'.format(url, resp.status_code)); sys.exit(1)
         data = resp.content
     
     else:
@@ -38,7 +38,7 @@ def readSource(url, log):
             with open(url, 'rb') as file:
                 data = file.read()
         except FileNotFoundError:
-            log.error('File not found ({})'.format(url)); sys.exit(1)
+            log.error('File {} not found'.format(url)); sys.exit(1)
     
     return data
 
@@ -52,7 +52,7 @@ def loadData(packageName, log):
         # Search available repositories for package, then fetch package data
         packageData = ''
         packageFilePath = ''
-        raise NotImplementedError
+        log.error('Searching rpositories not implemented yet'); sys.exit(1)
 
     elif urlType == 'repo/name':
         # Check specified repo for package, then fetch package data
@@ -107,7 +107,7 @@ def loadTypedefs(context, log):
     typedefPaths = typedefs['package_typedef']['files'][context].glob('*')
 
     for typedefPath in typedefPaths:
-        log.debug(typedefPath)
+        log.debug('Loading typedef from {}'.format(typedefPath))
         with open(typedefPath, 'r') as typedefFile:
             typedef = json5.load(typedefFile)
             
@@ -116,9 +116,9 @@ def loadTypedefs(context, log):
             
             # Name and type checks
             if typedef['name'] == 'package_typedef':
-                log.warning('skipping typedef {}, refuse to override core package_typedef'.format(typedef['name'])); continue
+                log.warning('Skipping typedef {}, refuse to override core package_typedef'.format(typedef['name'])); continue
             if typedef['type'] != 'package_typedef':
-                log.warning('skipping typedef {}, is not of type package_typedef'.format(typedef['name'])); continue
+                log.warning('Skipping typedef {}, is not of type package_typedef'.format(typedef['name'])); continue
             
             # Platform compatibility checks
             typedefPlatforms = typedef['releases']['all']['platforms']
@@ -127,10 +127,10 @@ def loadTypedefs(context, log):
             elif 'any' in typedefPlatforms.keys():
                 typdedefOSes = typedefPlatforms['any']
             else:
-                log.debug('skipping typedef {}, lacks definition for {}'.format(typedef['name'], platform.arch)); continue
+                log.warning('Skipping typedef {}, lacks definition for {}'.format(typedef['name'], platform.arch)); continue
             
             if not platform.os in typdedefOSes.keys():
-                log.debug('skipping typedef {}, lacks definition for {}'.format(typedef['name'], platform.os)); continue
+                log.warning('Skipping typedef {}, lacks definition for {}'.format(typedef['name'], platform.os)); continue
             typedefInstallData = typdedefOSes[platform.os]
 
             # System/user definition checks
@@ -139,7 +139,7 @@ def loadTypedefs(context, log):
                 == [link['source'] for link in typedefInstallData['links']]
                 == ['system', 'user']
             ):
-                log.debug('skipping typedef {}, system/user definitions for files and/or links are incorrect'); continue
+                log.warning('Skipping typedef {}, system/user definitions for files and/or links are incorrect'); continue
             
             # Compile the typedef
             compiledTypedef = {
@@ -155,7 +155,7 @@ def loadTypedefs(context, log):
 
             typedefs[typedef['name']] = compiledTypedef
 
-            log.debug('Loaded package typedef: {}'.format(typedef['name']))
+            log.debug('Loaded package typedef {}'.format(typedef['name']))
     return typedefs
 
 
@@ -168,17 +168,22 @@ def getInstalledVersions(packageData, packageTypedef, log):
         if packageName == packageDir.name:
             installedVersions = [versionDir.name for versionDir in packageDir.iterdir()]
             break
+    log.debug('Found installed versions {}'.format(installedVersions))
     return installedVersions
 
 def getActiveVersion(packageData, packageTypedef, installedVersions, log):
     packageName = packageData['name']
     packageLinkDir = pathlib.Path(packageTypedef['links']['user'])
     activeLink = packageLinkDir.joinpath(packageName).readlink()
-    log.debug('activeLink: {}'.format(activeLink.name))
+    log.debug('activeLink name: {}'.format(activeLink.name))
+    
     for version in installedVersions:
         versionTag = ('.' + version).replace('.', packageTypedef['version_separator'])
         if packageName + versionTag == activeLink.name:
+            log.debug('Found active version {}'.format(version))
             return version
+    
+    log.debug('Found no active version')
     return None
 
 
@@ -186,18 +191,18 @@ def getActiveVersion(packageData, packageTypedef, installedVersions, log):
 def getExistingVersion(version, packageData, log):
     if version == 'latest_stable':
         if packageData['latest_stable'] is None:
-            log.error('No latest_stable version defined in this package.'); sys.exit(1)
+            log.error('Package does not define latest_stable version'); sys.exit(1)
         return packageData['latest_stable']
 
     elif version == 'latest':
         if packageData['latest'] is None:
-            log.error('No latest version defined in this package.'); sys.exit(1)
+            log.error('Package does not define latest version'); sys.exit(1)
         return packageData['latest']
 
     elif version in packageData['releases']:
         return version
 
-    else: log.error('This package has no version "{}".'.format(version)); sys.exit(1)
+    else: log.error('Package has no version "{}"'.format(version)); sys.exit(1)
 
 
 # Get a compatible platform identifier
@@ -213,10 +218,10 @@ def getCompatiblePlatform(packageData, versionToInstall, log):
         oses = platforms['any']
         arch = 'any'
     else:
-        log.error('No install definition for {}'.format(platform.arch)); sys.exit(1)
+        log.error('Package has no release for {}'.format(platform.arch)); sys.exit(1)
 
     if not platform.os in oses.keys():
-        log.error('No install definition for {}'.format(platform.os)); sys.exit(1)
+        log.error('Package has no release for {}'.format(platform.os)); sys.exit(1)
 
     compatiblePlatform = _platform()
     compatiblePlatform.os = platform.os

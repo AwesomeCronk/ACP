@@ -6,7 +6,7 @@ def ensureFileExists(path):
         return
 
     elif path.is_dir():
-        raise FileExistsError('A directory exists at {}, cannot create file there.'.format(path))
+        raise FileExistsError('A directory exists at {}, cannot create file'.format(path))
 
     else:
         file = open(path, 'a'); file.close()
@@ -18,4 +18,4 @@ def ensureDirExists(path):
         return
 
     else:
-        path.mkdir(parents=True, exist_ok=False)    # Don't catch FileExistsError here, let it propagate.
+        path.mkdir(parents=True, exist_ok=False)    # Don't catch FileExistsError here, let it propagate

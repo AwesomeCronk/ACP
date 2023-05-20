@@ -1,4 +1,4 @@
-import pathlib, shutil
+import shutil
 
 from constants import paths, platform
 import operations as ops
@@ -50,11 +50,11 @@ def command_info(args, config):
     activeVersion = utils.packages.getActiveVersion(packageData, packageTypedefs[packageData['type']], installedVersions, log)
 
     output = '\n'.join([
-        'Information for {}:'.format(packageData['name']),
-        'Type: {}'.format(packageData['type']),
-        'Latest release: {}'.format(packageData['latest']),
+        'Information listing for {}:'.format(packageData['name']),
+        'Type:                  {}'.format(packageData['type']),
+        'Latest release:        {}'.format(packageData['latest']),
         'Latest stable release: {}'.format(packageData['latest_stable']),
-        'Active version: {}'.format(activeVersion),
+        'Active version:        {}'.format(activeVersion),
         'Releases:'
     ])
 
